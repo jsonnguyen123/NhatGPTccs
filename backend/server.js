@@ -819,6 +819,9 @@ app.post('/api/blackbaud/oauth/token', oauthRateLimiter, async (req, res) => {
     const { code, redirect_uri, canvas_user_id, code_verifier } = req.body;
     if (!validateRedirectUri(redirect_uri)) return res.status(400).json({ success: false, error: 'Invalid redirect_uri' });
     if (!canvas_user_id) return res.status(400).json({ success: false, error: 'canvas_user_id is required' });
+    if (!code_verifier || code_verifier.length < 43 || code_verifier.length > 128) {
+        return res.status(400).json({ success: false, error: 'Invalid code_verifier length' });
+    }
     try {
         const response = await fetch('https://oauth2.sky.blackbaud.com/token', {
             method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
