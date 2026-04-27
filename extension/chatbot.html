@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas AI Assistant - Chatbot</title>
+    <link rel="stylesheet" href="chatbot.css">
+</head>
+<body>
+    <div id="canvas-ai-assistant" class="canvas-ai-assistant-container">
+        <!-- Header -->
+        <div class="canvas-ai-header">
+            <div class="canvas-ai-header-left">
+                <div class="canvas-ai-header-icon">
+                    <img src="final-school-logo.png" alt="Canvas AI" class="header-logo-img">
+                </div>
+                <div class="canvas-ai-header-text">
+                    <h3 class="canvas-ai-title">Canvas AI</h3>
+                    <span class="canvas-ai-status">Online</span>
+                </div>
+            </div>
+            <div class="canvas-ai-header-controls">
+                <button id="canvas-ai-minimize" class="canvas-ai-control-btn" title="Minimize">
+                    <span>−</span>
+                </button>
+                <button id="canvas-ai-sync-header" class="canvas-ai-control-btn" title="Sync Data">
+                    <span>⟳</span>
+                </button>
+                <button id="canvas-ai-close" class="canvas-ai-control-btn" title="Close">
+                    <span>×</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Messages Container -->
+        <div id="canvas-ai-messages" class="canvas-ai-messages">
+            <div class="canvas-ai-welcome">
+                <div class="canvas-ai-welcome-icon">👋</div>
+                <h4>Welcome to Canvas AI Assistant</h4>
+                <p>Ask me about your courses, assignments, grades, or deadlines!</p>
+                <div class="canvas-ai-quick-actions">
+                    <button class="canvas-ai-quick-btn" data-prompt="What are my upcoming assignments?">
+                        📋 Assignments
+                    </button>
+                    <button class="canvas-ai-quick-btn" data-prompt="What courses am I enrolled in?">
+                        🎓 Courses
+                    </button>
+                    <button class="canvas-ai-quick-btn" data-prompt="What is my grade status?">
+                        📊 Grades
+                    </button>
+                    <button class="canvas-ai-quick-btn" data-prompt="What is on the menu for today?">
+                        🍴 Meals
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="canvas-ai-input-wrapper">
+            <div class="canvas-ai-input-container">
+                <textarea 
+                    id="canvas-ai-input" 
+                    class="canvas-ai-input" 
+                    placeholder="Ask me anything about Canvas..."
+                    rows="1"
+                ></textarea>
+                <button id="canvas-ai-send" class="canvas-ai-send-button" title="Send message">
+                    <span class="send-icon">📤</span>
+                </button>
+            </div>
+            <div class="canvas-ai-footer-text">
+                Powered by Canvas AI • <span class="canvas-ai-version">v1.0.0</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

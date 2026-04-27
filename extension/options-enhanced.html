@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas AI Assistant - Settings</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="options-enhanced.css">
+</head>
+<body>
+    <div class="options-container">
+        <!-- Sidebar Navigation -->
+        <aside class="settings-sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <div class="logo-glow"></div>
+                    <div class="logo-icon">
+                        <img src="final-school-logo.png" alt="Canvas AI Assistant" class="logo">
+                    </div>
+                </div>
+                <div class="sidebar-branding">
+                    <h1 class="sidebar-title">Canvas AI</h1>
+                    <span class="sidebar-subtitle">Assistant Settings</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-section="authentication">
+                    <span class="nav-icon">🔐</span>
+                    <span class="nav-label">Authentication</span>
+                    <span class="nav-indicator"></span>
+                </button>
+                <button class="nav-item" data-section="features">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-label">Features</span>
+                    <span class="nav-indicator"></span>
+                </button>
+                <button class="nav-item" data-section="appearance">
+                    <span class="nav-icon">🎨</span>
+                    <span class="nav-label">Appearance</span>
+                    <span class="nav-indicator"></span>
+                </button>
+                <button class="nav-item" data-section="help">
+                    <span class="nav-icon">❓</span>
+                    <span class="nav-label">Help & Guides</span>
+                    <span class="nav-indicator"></span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="version-info">
+                    <span class="version-badge">v1.0.0</span>
+                    <span class="version-text">Stable Release</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="settings-main">
+            <!-- Header with Actions -->
+            <div class="settings-header">
+                <div class="header-content">
+                    <div class="header-breadcrumb">
+                        <span class="breadcrumb-icon">⚙️</span>
+                        <span class="breadcrumb-text">Settings</span>
+                        <span class="breadcrumb-separator">›</span>
+                        <span class="breadcrumb-current" id="breadcrumb-section">Authentication</span>
+                    </div>
+                    <h2 id="section-title" class="section-title">Authentication Setup</h2>
+                    <p id="section-description" class="section-description">Configure your API tokens and connections</p>
+                </div>
+                <div class="header-actions">
+                    <button id="reset-settings" type="button" class="btn btn-ghost">
+                        <span class="btn-icon">↻</span>
+                        Reset
+                    </button>
+                    <button id="save-settings" type="button" class="btn btn-primary btn-lg">
+                        Save Settings
+                    </button>
+                </div>
+            </div>
+
+            <!-- Content Sections -->
+            <div class="settings-content">
+
+                <!-- Authentication Section -->
+                <section class="settings-section active" id="authentication" data-section="authentication">
+                    
+                    <!-- Canvas API Token Card -->
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-icon-wrapper">
+                                <span class="card-icon">🎓</span>
+                            </div>
+                            <div class="card-header-content">
+                                <h3 class="card-title">Canvas API Token</h3>
+                                <p class="card-subtitle">Secure connection to your Canvas account</p>
+                            </div>
+                            <span class="status-badge" id="canvas-status-badge">Not configured</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label for="canvas-token-input" class="form-label">
+                                    API Token <span class="required">*</span>
+                                </label>
+                                <div class="input-wrapper">
+                                    <span class="input-icon">🔑</span>
+                                    <input 
+                                        type="password" 
+                                        id="canvas-token-input" 
+                                        placeholder="Paste your Canvas API token here" 
+                                        class="form-input"
+                                        autocomplete="off"
+                                    >
+                                    <button class="btn-toggle-visibility" type="button" title="Toggle visibility">
+                                        <span class="eye-icon">👁️</span>
+                                    </button>
+                                </div>
+                                <small class="form-help">
+                                    <span class="help-icon">💡</span>
+                                    Your token is stored locally and never sent to external servers.
+                                </small>
+                            </div>
+                            <div class="button-group">
+                                <button id="test-canvas-token" class="btn btn-secondary">
+                                    <span class="btn-icon">✓</span>
+                                    Test Connection
+                                </button>
+                                <button id="show-canvas-guide-btn" class="btn btn-outline">
+                                    <span class="btn-icon">📖</span>
+                                    How to Get Token
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Blackbaud Connection Card -->
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-icon-wrapper secondary">
+                                <span class="card-icon">📅</span>
+                            </div>
+                            <div class="card-header-content">
+                                <h3 class="card-title">Blackbaud Connection</h3>
+                                <p class="card-subtitle">Sync your class schedules and student details</p>
+                            </div>
+                            <span class="status-badge" id="bb-status-badge">Checking...</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="connection-status" id="bb-connection-state">
+                                <div class="status-icon-large">⏳</div>
+                                <div class="status-details">
+                                    <span class="status-text">Checking connection status...</span>
+                                    <span class="status-subtext">Please wait</span>
+                                </div>
+                            </div>
+                            <div class="button-group">
+                                <button id="connect-blackbaud" class="btn btn-primary">
+                                    <span class="btn-icon">🔗</span>
+                                    Connect Blackbaud
+                                </button>
+                                <button id="disconnect-blackbaud" class="btn btn-danger" style="display:none;">
+                                    <span class="btn-icon">🔌</span>
+                                    Disconnect
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gmail Connection Card -->
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-icon-wrapper secondary">
+                                <span class="card-icon">📧</span>
+                            </div>
+                            <div class="card-header-content">
+                                <h3 class="card-title">Gmail Connection</h3>
+                                <p class="card-subtitle">Read school email announcements directly in the assistant</p>
+                            </div>
+                            <span class="status-badge" id="gmail-status-badge">Checking...</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="connection-status" id="gmail-connection-state">
+                                <div class="status-icon-large">⏳</div>
+                                <div class="status-details">
+                                    <span class="status-text">Checking connection status...</span>
+                                    <span class="status-subtext" id="gmail-email-display">Please wait</span>
+                                </div>
+                            </div>
+                            <div class="gmail-permissions-note">
+                                <span class="help-icon">🔒</span>
+                                <span>Read-only access — we can only <strong>view</strong> your emails, never send or delete them.</span>
+                            </div>
+                            <div class="button-group">
+                                <button id="connect-gmail" class="btn btn-primary">
+                                    <span class="btn-icon">🔗</span>
+                                    Connect Gmail
+                                </button>
+                                <button id="disconnect-gmail" class="btn btn-danger" style="display:none;">
+                                    <span class="btn-icon">🔌</span>
+                                    Disconnect Gmail
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Status Card -->
+                    <div class="section-card status-card">
+                        <div class="card-header">
+                            <div class="card-icon-wrapper secondary">
+                                <span class="card-icon">📊</span>
+                            </div>
+                            <div class="card-header-content">
+                                <h3 class="card-title">System Status</h3>
+                                <p class="card-subtitle">Current connection health</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="status-grid">
+                                <div class="status-item">
+                                    <div class="status-item-icon">🎓</div>
+                                    <div class="status-item-content">
+                                        <span class="status-key">Canvas Token</span>
+                                        <span class="status-value" id="canvas-token-status">Not configured</span>
+                                    </div>
+                                </div>
+                                <div class="status-item">
+                                    <div class="status-item-icon">📅</div>
+                                    <div class="status-item-content">
+                                        <span class="status-key">Blackbaud</span>
+                                        <span class="status-value" id="blackbaud-status-text">Not configured</span>
+                                    </div>
+                                </div>
+                                <div class="status-item">
+                                    <div class="status-item-icon">📧</div>
+                                    <div class="status-item-content">
+                                        <span class="status-key">Gmail</span>
+                                        <span class="status-value" id="gmail-status-text">Not connected</span>
+                                    </div>
+                                </div>
+                                <div class="status-item">
+                                    <div class="status-item-icon">✨</div>
+                                    <div class="status-item-content">
+                                        <span class="status-key">AI Assistant</span>
+                                        <span class="status-value success">Ready</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </section>
+
+                <!-- Features Section -->
+                <section class="settings-section" id="features" data-section="features">
+                    
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-icon-wrapper">
+                                <span class="card-icon">🔄</span>
+                            </div>
+                            <div class="card-header-content">
+                                <h3 class="card-title">Data Synchronization</h3>
+                                <p class="card-subtitle">Automatic background updates</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <span class="setting-title">Auto-Sync Canvas Data</span>
+                                    <span class="setting-description">Automatically sync your Canvas data every 15 minutes</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="auto-sync" checked>
+                                    <span class="toggle-track"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-icon-wrapper secondary">
+                                <span class="card-icon">🔔</span>
+                            </div>
+                            <div class="card-header-content">
+                                <h3 class="card-title">Notifications</h3>
+                                <p class="card-subtitle">Stay informed of important updates</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <span class="setting-title">Desktop Notifications</span>
+                                    <span class="setting-description">Get notified about new announcements and deadlines</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="notifications" checked>
+                                    <span class="toggle-track"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gmail Email Settings Card -->
+                    <div class="section-card" id="gmail-settings-card">
+                        <div class="card-header">
+                            <div class="card-icon-wrapper gmail">
+                                <span class="card-icon">📧</span>
+                            </div>
+                            <div class="card-header-content">
+                                <h3 class="card-title">Email Settings</h3>
+                                <p class="card-subtitle">Configure which school emails to fetch</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <span class="setting-title">Days to Look Back</span>
+                                    <span class="setting-description">How many days of emails to fetch</span>
+                                </div>
+                                <div class="input-mini-wrapper">
+                                    <select id="gmail-days-back" class="form-select-mini">
+                                        <option value="3">3 days</option>
+                                        <option value="7" selected>7 days</option>
+                                        <option value="14">14 days</option>
+                                        <option value="30">30 days</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <span class="setting-title">Max Emails to Fetch</span>
+                                    <span class="setting-description">Limit the number of emails retrieved</span>
+                                </div>
+                                <div class="input-mini-wrapper">
+                                    <select id="gmail-max-results" class="form-select-mini">
+                                        <option value="10">10 emails</option>
+                                        <option value="15" selected>15 emails</option>
+                                        <option value="25">25 emails</option>
+                                        <option value="50">50 emails</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="button-group" style="margin-top: var(--spacing-md);">
+                                <button id="gmail-clear-cache" class="btn btn-outline">
+                                    <span class="btn-icon">🗑️</span>
+                                    Clear Email Cache
+                                </button>
+                                <button id="gmail-test-fetch" class="btn btn-secondary">
+                                    <span class="btn-icon">📨</span>
+                                    Test Fetch Emails
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-icon-wrapper accent">
+                                <span class="card-icon">🗂️</span>
+                            </div>
+                            <div class="card-header-content">
+                                <h3 class="card-title">Data Management</h3>
+                                <p class="card-subtitle">Cache and storage options</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="data-actions">
+                                <button id="clear-cache" class="btn btn-outline btn-block">
+                                    <span class="btn-icon">🗑️</span>
+                                    Clear Cached Data
+                                </button>
+                                <button id="export-data" class="btn btn-outline btn-block">
+                                    <span class="btn-icon">📤</span>
+                                    Export Settings
+                                </button>
+                            </div>
+                            <small class="form-help">
+                                <span class="help-icon">⚠️</span>
+                                Clearing cache will require a fresh sync on the next Canvas page load.
+                            </small>
+                        </div>
+                    </div>
+
+                </section>
+
+                <!-- Appearance Section -->
+                <section class="settings-section" id="appearance" data-section="appearance">
+                    
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-icon-wrapper">
+                                <span class="card-icon">🎨</span>
+                            </div>
+                            <div class="card-header-content">
+                                <h3 class="card-title">Theme Selection</h3>
+                                <p class="card-subtitle">Customize your visual experience</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="theme-selector">
+                                <label class="theme-option">
+                                    <input type="radio" name="theme" value="canvas" checked>
+                                    <div class="theme-preview canvas-theme">
+                                        <div class="theme-preview-header"></div>
+                                        <div class="theme-preview-content"></div>
+                                    </div>
+                                    <span class="theme-label">Canvas (Default)</span>
+                                </label>
+                                <label class="theme-option">
+                                    <input type="radio" name="theme" value="dark">
+                                    <div class="theme-preview dark-theme">
+                                        <div class="theme-preview-header"></div>
+                                        <div class="theme-preview-content"></div>
+                                    </div>
+                                    <span class="theme-label">Dark Mode</span>
+                                </label>
+                                <label class="theme-option">
+                                    <input type="radio" name="theme" value="light">
+                                    <div class="theme-preview light-theme">
+                                        <div class="theme-preview-header"></div>
+                                        <div class="theme-preview-content"></div>
+                                    </div>
+                                    <span class="theme-label">Light Mode</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-icon-wrapper secondary">
+                                <span class="card-icon">📐</span>
+                            </div>
+                            <div class="card-header-content">
+                                <h3 class="card-title">Chatbot Layout</h3>
+                                <p class="card-subtitle">Interface density options</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <span class="setting-title">Compact Mode</span>
+                                    <span class="setting-description">Use a condensed chatbot layout for smaller screens</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="compact-mode">
+                                    <span class="toggle-track"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                </section>
+
+                <!-- Help Section -->
+                <section class="settings-section" id="help" data-section="help">
+                    
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-icon-wrapper">
+                                <span class="card-icon">📚</span>
+                            </div>
+                            <div class="card-header-content">
+                                <h3 class="card-title">Setup Guides</h3>
+                                <p class="card-subtitle">Step-by-step instructions</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="guide-list">
+                                <a href="#" id="show-canvas-guide-btn" class="guide-item">
+                                    <div class="guide-icon">🎓</div>
+                                    <div class="guide-content">
+                                        <span class="guide-title">Canvas API Token Setup</span>
+                                        <span class="guide-description">Learn how to generate and configure your Canvas token</span>
+                                    </div>
+                                    <span class="guide-arrow">→</span>
+                                </a>
+                                <a href="#" id="show-openai-guide-btn" class="guide-item">
+                                    <div class="guide-icon">📅</div>
+                                    <div class="guide-content">
+                                        <span class="guide-title">Blackbaud Configuration</span>
+                                        <span class="guide-description">Connect your school's Blackbaud system</span>
+                                    </div>
+                                    <span class="guide-arrow">→</span>
+                                </a>
+                                <a href="#" id="show-troubleshooting" class="guide-item">
+                                    <div class="guide-icon">🔧</div>
+                                    <div class="guide-content">
+                                        <span class="guide-title">Troubleshooting Guide</span>
+                                        <span class="guide-description">Common issues and how to fix them</span>
+                                    </div>
+                                    <span class="guide-arrow">→</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-icon-wrapper secondary">
+                                <span class="card-icon">💬</span>
+                            </div>
+                            <div class="card-header-content">
+                                <h3 class="card-title">Support & Resources</h3>
+                                <p class="card-subtitle">Get help when you need it</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="support-grid">
+                                <a href="#" id="full-docs-link" class="support-card">
+                                    <span class="support-icon">📖</span>
+                                    <span class="support-title">Documentation</span>
+                                    <span class="support-desc">Full guide & FAQ</span>
+                                </a>
+                                <a href="#" id="report-issue-link" class="support-card">
+                                    <span class="support-icon">🐛</span>
+                                    <span class="support-title">Report Issue</span>
+                                    <span class="support-desc">Found a bug?</span>
+                                </a>
+                                <a href="#" id="community-forum-link" class="support-card">
+                                    <span class="support-icon">👥</span>
+                                    <span class="support-title">Community</span>
+                                    <span class="support-desc">Join discussions</span>
+                                </a>
+                                <a href="#" id="feedback-link" class="support-card">
+                                    <span class="support-icon">💡</span>
+                                    <span class="support-title">Feedback</span>
+                                    <span class="support-desc">Share ideas</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Notification Popup Overlay -->
+    <div id="notification-overlay" class="notification-overlay">
+        <div class="notification-popup">
+            <div class="notification-icon" id="notification-icon"></div>
+            <div class="notification-content">
+                <h3 class="notification-title" id="notification-title">Title</h3>
+                <p class="notification-message" id="notification-message">Message</p>
+            </div>
+            <button class="notification-close" id="notification-close">×</button>
+            <div class="notification-progress" id="notification-progress"></div>
+        </div>
+    </div>
+    
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <div class="loading-text">Processing...</div>
+        </div>
+    </div>
+    <script src="theme-manager.js"></script>
+    <script src="options-enhanced.js"></script>
+</body>
+</html>

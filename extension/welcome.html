@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Canvas AI Assistant</title>
+    <link rel="stylesheet" href="welcome.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="welcome-container">
+        
+        <!-- Navigation Bar -->
+        <nav class="nav-bar">
+            <div class="nav-logo">
+                <img src="https://cache.bsnsports.com/comp/sls/get/43/12205?f=jpg&sid=12205&ts=1638206562" alt="Canvas AI">
+                <span>Canvas AI</span>
+            </div>
+            <div class="nav-links">
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#setup" class="nav-link">Setup</a>
+                <a href="#" class="nav-link">Docs</a>
+            </div>
+            <button class="nav-cta" id="nav-login-btn">Get Started</button>
+        </nav>
+
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-badge">
+                <span class="hero-badge-dot"></span>
+                <span>AI-Powered Academic Assistant</span>
+            </div>
+            
+            <h1 class="hero-title">
+                <span class="line1">Canvas AI</span>
+                <span class="line2">Assistant</span>
+            </h1>
+            
+            <p class="hero-subtitle">
+                Elevate your academic experience with AI-powered insights, 
+                assignment tracking, and intelligent study planning.
+            </p>
+            
+            <button class="hero-cta" id="hero-start-btn">
+                <span>Getting Started</span>
+                <span>→</span>
+            </button>
+        </section>
+
+        <!-- Setup Section -->
+        <section class="content-section" id="setup">
+            <div class="section-header">
+                <h2 class="section-title">Quick Setup</h2>
+                <p class="section-subtitle">Connect your accounts to unlock all features</p>
+            </div>
+
+            <div class="two-column">
+                <!-- Authentication Panel -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <span class="panel-icon">🔐</span>
+                        <h3 class="panel-title">Authentication</h3>
+                    </div>
+                    
+                    <div class="panel-content">
+                        <!-- Canvas OAuth -->
+                        <div class="auth-card">
+                            <div class="auth-card-header">
+                                <span class="auth-card-title">Connect Canvas Account</span>
+                                <span class="auth-badge required">Required</span>
+                            </div>
+                            <p class="auth-card-desc">Secure OAuth authentication with your institution</p>
+                            <button id="canvas-oauth-btn" class="btn btn-primary">
+                                <span>🎓</span>
+                                <span>Connect Canvas</span>
+                            </button>
+                        </div>
+
+                        <!-- Manual Setup -->
+                        <div class="auth-card">
+                            <div class="auth-card-header">
+                                <span class="auth-card-title">Manual Token Setup</span>
+                                <span class="auth-badge optional">Advanced</span>
+                            </div>
+                            <p class="auth-card-desc">Use API token if OAuth is unavailable</p>
+                            <button id="manual-setup-btn" class="btn btn-secondary">
+                                <span>Manual Setup</span>
+                            </button>
+                        </div>
+
+                        <!-- AI Setup -->
+                        <div class="auth-card">
+                            <div class="auth-card-header">
+                                <span class="auth-card-title">AI Assistant</span>
+                                <span class="auth-badge optional">Optional</span>
+                            </div>
+                            <p class="auth-card-desc">Configure AI for intelligent assistance</p>
+                            <button id="openai-setup-btn" class="btn btn-ghost">
+                                <span>Configure AI</span>
+                            </button>
+                        </div>
+
+                        <!-- Progress -->
+                        <div class="progress-card">
+                            <h4 class="progress-title">Setup Progress</h4>
+                            <div class="progress-items">
+                                <div class="progress-item">
+                                    <span class="progress-check" id="canvas-check">○</span>
+                                    <span>Canvas Connected</span>
+                                </div>
+                                <div class="progress-item">
+                                    <span class="progress-check" id="ai-check">○</span>
+                                    <span>AI Configured</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Features Panel -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <span class="panel-icon">✨</span>
+                        <h3 class="panel-title">Features</h3>
+                    </div>
+                    
+                    <div class="panel-content">
+                        <div class="feature-grid">
+                            <div class="feature-card">
+                                <div class="feature-icon">📚</div>
+                                <h4 class="feature-title">Course Management</h4>
+                                <p class="feature-desc">Organize all courses with smart categorization</p>
+                            </div>
+                            
+                            <div class="feature-card">
+                                <div class="feature-icon">⏰</div>
+                                <h4 class="feature-title">Assignment Tracking</h4>
+                                <p class="feature-desc">Never miss deadlines with smart reminders</p>
+                            </div>
+                            
+                            <div class="feature-card">
+                                <div class="feature-icon">📊</div>
+                                <h4 class="feature-title">Grade Analytics</h4>
+                                <p class="feature-desc">Track progress and predict final grades</p>
+                            </div>
+                            
+                            <div class="feature-card">
+                                <div class="feature-icon">🤖</div>
+                                <h4 class="feature-title">AI Assistant</h4>
+                                <p class="feature-desc">Get personalized academic guidance</p>
+                            </div>
+                            
+                            <div class="feature-card">
+                                <div class="feature-icon">🔔</div>
+                                <h4 class="feature-title">Smart Alerts</h4>
+                                <p class="feature-desc">Intelligent notifications for updates</p>
+                            </div>
+                            
+                            <div class="feature-card">
+                                <div class="feature-icon">🔒</div>
+                                <h4 class="feature-title">Privacy First</h4>
+                                <p class="feature-desc">All data stored locally and encrypted</p>
+                            </div>
+                        </div>
+
+                        <!-- Security Note -->
+                        <div class="security-note">
+                            <span class="security-icon">🛡️</span>
+                            <div class="security-text">
+                                <h4>Your Privacy Matters</h4>
+                                <p>All Canvas data is processed locally on your device. Nothing is stored on external servers.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p class="footer-text">
+                    🔒 Your data stays private.  <a href="#" id="privacy-link">Privacy Policy</a>
+                </p>
+                <span class="footer-version">v<span id="welcome-version">1.0.0</span></span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Setting up Canvas AI Assistant...</div>
+    </div>
+
+    <!-- Success Overlay -->
+    <div id="success-overlay" class="success-overlay">
+        <div class="success-modal">
+            <div class="success-checkmark">
+                <svg class="checkmark-svg" viewBox="0 0 52 52">
+                    <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                    <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                </svg>
+            </div>
+            <h3 class="success-title">Successfully Connected!</h3>
+            <p class="success-desc" id="success-user-name">Your Canvas account is now linked.</p>
+            <div class="success-progress">
+                <div class="success-progress-bar"></div>
+            </div>
+            <p class="success-redirect-text">Redirecting to settings...</p>
+        </div>
+    </div>
+
+    <script src="welcome.js"></script>
+</body>
+</html>

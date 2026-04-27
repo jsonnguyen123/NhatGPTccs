@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blackbaud Configuration - Canvas AI Assistant</title>
+    <link rel="stylesheet" href="docs-styles.css">
+</head>
+<body>
+    <div class="docs-container">
+        <!-- Header -->
+        <header class="docs-header">
+            <div class="header-content">
+                <a href="docs-hub.html" class="back-link">
+                    <span class="back-icon">←</span>
+                    Back to Documentation
+                </a>
+                <div class="logo-section">
+                    <img src="/final-school-logo.png" alt="Canvas AI" class="docs-logo">
+                    <div class="logo-text">
+                        <h1>Canvas AI Assistant</h1>
+                        <span class="subtitle">Setup Guide</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="docs-main guide-content">
+            <!-- Guide Header -->
+            <div class="guide-header">
+                <div class="guide-icon">📅</div>
+                <div class="guide-title-section">
+                    <h1>Blackbaud Configuration</h1>
+                    <p class="guide-subtitle">Sync your class schedules and student details from Blackbaud</p>
+                </div>
+                <div class="guide-meta">
+                    <span class="meta-item">⏱️ 3 minutes</span>
+                    <span class="meta-item difficulty easy">Easy</span>
+                    <span class="meta-item optional-badge">Optional</span>
+                </div>
+            </div>
+
+            <!-- Prerequisites -->
+            <div class="prerequisites-box">
+                <h3>📋 Before You Begin</h3>
+                <ul>
+                    <li>
+                        <span class="prereq-icon">✓</span>
+                        <span>Canvas account must be connected first</span>
+                    </li>
+                    <li>
+                        <span class="prereq-icon">✓</span>
+                        <span>You need an active Blackbaud/MySchoolApp account</span>
+                    </li>
+                    <li>
+                        <span class="prereq-icon">✓</span>
+                        <span>School must use Blackbaud for scheduling</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Table of Contents -->
+            <nav class="toc-nav">
+                <h3>On This Page</h3>
+                <ul class="toc-list">
+                    <li><a href="#what-is-blackbaud">What is Blackbaud Integration?</a></li>
+                    <li><a href="#connect">Connecting Your Account</a></li>
+                    <li><a href="#features">What You Can Do</a></li>
+                    <li><a href="#disconnect">Disconnecting Blackbaud</a></li>
+                </ul>
+            </nav>
+
+            <!-- Content -->
+            <article class="guide-article">
+                <!-- What is Blackbaud -->
+                <section class="guide-section" id="what-is-blackbaud">
+                    <div class="section-header">
+                        <span class="section-number">1</span>
+                        <h2>What is Blackbaud Integration?</h2>
+                    </div>
+                    <div class="section-content">
+                        <p class="intro-text">Blackbaud (MySchoolApp) is the system your school uses for scheduling, attendance, and student information. Connecting it to Canvas AI Assistant allows you to:</p>
+                        
+                        <div class="features-grid">
+                            <div class="feature-box">
+                                <span class="feature-icon">📅</span>
+                                <h4>View Class Schedules</h4>
+                                <p>See your daily and weekly class schedules directly in the assistant.</p>
+                            </div>
+                            <div class="feature-box">
+                                <span class="feature-icon">🔔</span>
+                                <h4>Schedule Reminders</h4>
+                                <p>Get reminders about upcoming classes and schedule changes.</p>
+                            </div>
+                            <div class="feature-box">
+                                <span class="feature-icon">✨</span>
+                                <h4>Smarter AI Responses</h4>
+                                <p>The AI can reference your schedule when answering questions.</p>
+                            </div>
+                            <div class="feature-box">
+                                <span class="feature-icon">📊</span>
+                                <h4>Unified View</h4>
+                                <p>Combine Canvas assignments with your Blackbaud schedule.</p>
+                            </div>
+                        </div>
+
+                        <div class="callout callout-info">
+                            <span class="callout-icon">ℹ️</span>
+                            <div class="callout-content">
+                                <strong>Note:</strong> Blackbaud integration is optional. The Canvas AI Assistant works fully with just Canvas connected. Add Blackbaud for enhanced schedule features.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Connect Section -->
+                <section class="guide-section" id="connect">
+                    <div class="section-header">
+                        <span class="section-number">2</span>
+                        <h2>Connecting Your Blackbaud Account</h2>
+                    </div>
+                    <div class="section-content">
+                        <div class="steps-container">
+                            <div class="step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h4>Ensure Canvas is Connected</h4>
+                                    <p>Before connecting Blackbaud, make sure you've successfully connected your Canvas account. The extension popup should show your Canvas data.</p>
+                                    <div class="callout callout-warning">
+                                        <span class="callout-icon">⚠️</span>
+                                        <div class="callout-content">
+                                            <strong>Required:</strong> Canvas must be connected first. If you haven't done this, see the <a href="guide-canvas-token.html">Canvas API Token Setup</a> guide.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h4>Open Extension Settings</h4>
+                                    <p>Click the Canvas AI Assistant icon in your browser toolbar, then click the <strong>⚙️ Settings</strong> button (gear icon) to open the settings page.</p>
+                                    <div class="visual-guide">
+                                        <div class="popup-preview">
+                                            <div class="popup-header">Canvas AI Assistant</div>
+                                            <div class="popup-content">
+                                                <div class="popup-item">📊 Status: Ready</div>
+                                                <div class="popup-item highlight">⚙️ Settings ← Click here</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h4>Navigate to Authentication Page</h4>
+                                    <p>In the settings sidebar, make sure you're on the <strong>"Authentication"</strong> section (it should be selected by default).</p>
+                                </div>
+                            </div>
+
+                            <div class="step">
+                                <div class="step-number">4</div>
+                                <div class="step-content">
+                                    <h4>Find Blackbaud Connection Card</h4>
+                                    <p>Scroll down the Authentication page until you see the <strong>"Blackbaud Connection"</strong> card. It should show "Not Connected" status initially.</p>
+                                    <div class="card-preview">
+                                        <div class="preview-card">
+                                            <div class="preview-card-header">
+                                                <span>Blackbaud Connection</span>
+                                                <span class="preview-badge">❌ Not Connected</span>
+                                            </div>
+                                            <div class="preview-card-body">
+                                                <p>Sync your class schedules and student details</p>
+                                                <button class="preview-button primary">🔗 Connect Blackbaud</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="step">
+                                <div class="step-number">5</div>
+                                <div class="step-content">
+                                    <h4>Click "Connect Blackbaud"</h4>
+                                    <p>Click the <strong>"Connect Blackbaud"</strong> button. A new window will open for Blackbaud authentication.</p>
+                                </div>
+                            </div>
+
+                            <div class="step">
+                                <div class="step-number">6</div>
+                                <div class="step-content">
+                                    <h4>Sign In to Blackbaud</h4>
+                                    <p>In the popup window, sign in with your Blackbaud/MySchoolApp credentials. These are typically your school credentials.</p>
+                                    <div class="callout callout-info">
+                                        <span class="callout-icon">ℹ️</span>
+                                        <div class="callout-content">
+                                            <strong>Same as MySchoolApp:</strong> Use the same login you use for MySchoolApp or your school's Blackbaud portal.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="step">
+                                <div class="step-number">7</div>
+                                <div class="step-content">
+                                    <h4>Authorize Access</h4>
+                                    <p>After logging in, Blackbaud will ask you to authorize Canvas AI Assistant to access your schedule data. Click <strong>"Allow"</strong> or <strong>"Authorize"</strong>.</p>
+                                </div>
+                            </div>
+
+                            <div class="step">
+                                <div class="step-number">8</div>
+                                <div class="step-content">
+                                    <h4>Connection Complete!</h4>
+                                    <p>The popup will close and the settings page will update to show "✅ Connected". Your schedule data will begin syncing.</p>
+                                    <div class="success-box">
+                                        <span class="success-icon">✅</span>
+                                        <span>Blackbaud connected successfully! Reload any Canvas tab to see your schedule data.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Features Section -->
+                <section class="guide-section" id="features">
+                    <div class="section-header">
+                        <span class="section-number">3</span>
+                        <h2>What You Can Do Now</h2>
+                    </div>
+                    <div class="section-content">
+                        <p class="intro-text">With Blackbaud connected, try these features:</p>
+
+                        <div class="example-queries">
+                            <h4>Ask the AI Assistant:</h4>
+                            <div class="query-examples">
+                                <div class="query-item">
+                                    <span class="query-icon">💬</span>
+                                    <span class="query-text">"What classes do I have today?"</span>
+                                </div>
+                                <div class="query-item">
+                                    <span class="query-icon">💬</span>
+                                    <span class="query-text">"When is my next Math class?"</span>
+                                </div>
+                                <div class="query-item">
+                                    <span class="query-icon">💬</span>
+                                    <span class="query-text">"Show my schedule for this week"</span>
+                                </div>
+                                <div class="query-item">
+                                    <span class="query-icon">💬</span>
+                                    <span class="query-text">"What time does English start tomorrow?"</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Disconnect Section -->
+                <section class="guide-section" id="disconnect">
+                    <div class="section-header">
+                        <span class="section-number">4</span>
+                        <h2>Disconnecting Blackbaud</h2>
+                    </div>
+                    <div class="section-content">
+                        <p class="intro-text">If you need to disconnect your Blackbaud account:</p>
+
+                        <div class="steps-container compact">
+                            <div class="step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <p>Go to <strong>Settings → Authentication</strong></p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <p>Find the Blackbaud Connection card</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <p>Click <strong>"Disconnect"</strong> button</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">4</div>
+                                <div class="step-content">
+                                    <p>Confirm the disconnection when prompted</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="callout callout-info">
+                            <span class="callout-icon">ℹ️</span>
+                            <div class="callout-content">
+                                <strong>Note:</strong> Disconnecting Blackbaud won't affect your Canvas connection. Canvas AI Assistant will continue to work with Canvas data.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Help Section -->
+                <section class="guide-section help-section">
+                    <div class="help-box">
+                        <h3>Having Trouble?</h3>
+                        <p>If you're experiencing problems connecting Blackbaud, make sure your school uses Blackbaud/MySchoolApp and that you have valid credentials. Check our <a href="guide-troubleshooting.html">Troubleshooting Guide</a> for more help.</p>
+                        <div class="help-buttons">
+                            <a href="guide-troubleshooting.html" class="btn btn-secondary">View Troubleshooting</a>
+                            <a href="report-issue.html" class="btn btn-primary">Report Issue</a>
+                        </div>
+                    </div>
+                </section>
+            </article>
+        </main>
+
+        <!-- Footer -->
+        <footer class="docs-footer">
+            <div class="footer-content">
+                <p>Canvas AI Assistant v1.0.0</p>
+                <p>© 2024 Christ Church School. All rights reserved.</p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="docs-navigation.js"></script>
+</body>
+</html>

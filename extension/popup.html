@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas AI Assistant</title>
+    <link rel="stylesheet" href="popup-enhanced.css">
+</head>
+<body>
+    <div class="popup-container">
+        <!-- Header -->
+        <div class="popup-header">
+            <div class="logo-section">
+                <div class="logo-container">
+                    <div class="logo-glow"></div>
+                    <img src="/final-school-logo.png" alt="Canvas AI Assistant" class="logo">
+                </div>
+                <div class="header-text">
+                    <h1>Canvas AI</h1>
+                    <p class="header-subtitle">Your Academic Assistant</p>
+                </div>
+            </div>
+            <div class="status-indicator" id="status-indicator">
+                <span class="status-dot"></span>
+                <span class="status-label">Ready</span>
+            </div>
+        </div>
+
+        <!-- Status Section -->
+        <div class="status-section">
+            <div class="status-cards">
+                <div class="status-card">
+                    <span class="status-icon">🎓</span>
+                    <div class="status-info">
+                        <span class="status-label">Canvas</span>
+                        <span class="status-value" id="canvas-status">Checking...</span>
+                    </div>
+                </div>
+                <div class="status-card">
+                    <span class="status-icon">📊</span>
+                    <div class="status-info">
+                        <span class="status-label">Sync</span>
+                        <span class="status-value" id="data-status">Ready</span>
+                    </div>
+                </div>
+                <div class="status-card">
+                    <span class="status-icon">✨</span>
+                    <div class="status-info">
+                        <span class="status-label">AI</span>
+                        <span class="status-value" id="ai-status">Active</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="actions-section">
+            <h2 class="section-title">Quick Actions</h2>
+            <div class="action-buttons">
+                <button class="action-btn primary" id="open-chatbot" title="Open AI Chat Assistant">
+                    <span class="btn-icon">💬</span>
+                    <span class="btn-text">AI Chat</span>
+                </button>
+                <button class="action-btn secondary" id="refresh-data" title="Sync latest data">
+                    <span class="btn-icon">🔄</span>
+                    <span class="btn-text">Refresh</span>
+                </button>
+                <button class="action-btn secondary" id="open-settings" title="Open settings">
+                    <span class="btn-icon">⚙️</span>
+                    <span class="btn-text">Settings</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="stats-section">
+            <h2 class="section-title">Overview</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📚</div>
+                    <div class="stat-value" id="courses-count">0</div>
+                    <div class="stat-label">Courses</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📝</div>
+                    <div class="stat-value" id="assignments-count">0</div>
+                    <div class="stat-label">Tasks</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-value" id="avg-grade">--</div>
+                    <div class="stat-label">Average</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="activity-section">
+            <h2 class="section-title">Recent Activity</h2>
+            <div class="activity-list" id="activity-list">
+                <div class="activity-item placeholder">
+                    <span class="activity-icon">📚</span>
+                    <div class="activity-content">
+                        <div class="activity-title">No recent activity</div>
+                        <div class="activity-subtitle">Visit Canvas to see your assignments</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer-section">
+            <div class="footer-info">
+                <a href="#" class="footer-link" id="help-link" title="Get help">
+                    <span class="footer-icon">❓</span> Help
+                </a>
+                <a href="#" class="footer-link" id="docs-link" title="View documentation">
+                    <span class="footer-icon">📖</span> Docs
+                </a>
+            </div>
+            <div class="version-badge">
+                v<span id="version">1.0.0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Processing...</div>
+    </div>
+    <script src="theme-manager.js"></script>
+    <script src="popup.js"></script>
+</body>
+</html>

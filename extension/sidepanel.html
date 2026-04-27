@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas AI Assistant</title>
+    <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+    <div id="sidepanel-container" class="sidepanel-container">
+        <!-- Header -->
+        <div class="sidepanel-header">
+            <div class="header-left">
+                <img src="icon48.png" alt="Logo" class="header-logo">
+                <div class="header-title">
+                    <h1>Canvas AI</h1>
+                    <span class="header-status" id="connection-status">● Connecting...</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="sync-btn" class="header-btn" title="Sync Data">
+                    <span class="sync-icon">🔄</span>
+                </button>
+                <button id="settings-btn" class="header-btn" title="Settings">
+                    <span>⚙️</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Data Status Banner -->
+        <div id="data-status-banner" class="data-status-banner hidden">
+            <span class="status-text"></span>
+            <button class="sync-now-btn">Sync Now</button>
+        </div>
+
+        <!-- Messages Container -->
+        <div id="sidepanel-messages" class="sidepanel-messages">
+            <!-- Welcome message will be inserted here -->
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions" id="quick-actions">
+            <button class="quick-action-btn" data-prompt="What assignments are due this week?">
+                📅 Due This Week
+            </button>
+            <button class="quick-action-btn" data-prompt="Show my grades">
+                📊 My Grades
+            </button>
+            <button class="quick-action-btn" data-prompt="What's overdue?">
+                ⚠️ Overdue
+            </button>
+            <button class="quick-action-btn" data-prompt="What courses am I enrolled in?">
+                📚 My Courses
+            </button>
+        </div>
+
+        <!-- Input Area -->
+        <div class="sidepanel-input-wrapper">
+            <textarea 
+                id="sidepanel-input" 
+                class="sidepanel-input" 
+                placeholder="Ask about assignments, grades, deadlines..."
+                rows="1"
+            ></textarea>
+            <button id="sidepanel-send" class="sidepanel-send-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script src="sidepanel.js"></script>
+</body>
+</html>

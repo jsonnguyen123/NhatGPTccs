@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report an Issue - Canvas AI Assistant</title>
+    <link rel="stylesheet" href="docs-styles.css">
+
+</head>
+<body>
+    <div class="docs-container">
+        <!-- Header -->
+        <header class="docs-header">
+            <div class="header-content">
+                <a href="docs-hub.html" class="back-link">
+                    <span class="back-icon">←</span>
+                    Back to Documentation
+                </a>
+                <div class="logo-section">
+                    <img src="final-school-logo.png" alt="Canvas AI" class="docs-logo">
+                    <div class="logo-text">
+                        <h1>Canvas AI Assistant</h1>
+                        <span class="subtitle">Report an Issue</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="docs-main">
+            <div class="report-container">
+                <div class="report-header">
+                    <div class="report-icon">🐛</div>
+                    <h1>Report an Issue</h1>
+                    <p>Having trouble? Let us know and we'll help you out.</p>
+                </div>
+
+                <!-- Issue Form - Added novalidate for custom validation -->
+                <form id="issue-form" class="issue-form" novalidate>
+                    <!-- Issue Type -->
+                    <div class="form-section">
+                        <label class="form-label required">What type of issue are you experiencing?</label>
+                        <div class="issue-type-grid" id="issue-type-container">
+                            <label class="issue-type-option">
+                                <input type="radio" name="issue-type" value="connection">
+                                <div class="option-content">
+                                    <span class="option-icon">🔐</span>
+                                    <span class="option-label">Connection Issue</span>
+                                    <span class="option-desc">Can't connect Canvas or Blackbaud</span>
+                                </div>
+                            </label>
+                            
+                            <label class="issue-type-option">
+                                <input type="radio" name="issue-type" value="chatbot">
+                                <div class="option-content">
+                                    <span class="option-icon">✨</span>
+                                    <span class="option-label">Chatbot Problem</span>
+                                    <span class="option-desc">AI not responding or giving wrong answers</span>
+                                </div>
+                            </label>
+                            
+                            <label class="issue-type-option">
+                                <input type="radio" name="issue-type" value="data">
+                                <div class="option-content">
+                                    <span class="option-icon">📊</span>
+                                    <span class="option-label">Data Issue</span>
+                                    <span class="option-desc">Missing or incorrect data</span>
+                                </div>
+                            </label>
+                            
+                            <label class="issue-type-option">
+                                <input type="radio" name="issue-type" value="display">
+                                <div class="option-content">
+                                    <span class="option-icon">🖥️</span>
+                                    <span class="option-label">Display/UI Issue</span>
+                                    <span class="option-desc">Something looks wrong or broken</span>
+                                </div>
+                            </label>
+                            
+                            <label class="issue-type-option">
+                                <input type="radio" name="issue-type" value="performance">
+                                <div class="option-content">
+                                    <span class="option-icon">🐌</span>
+                                    <span class="option-label">Performance Issue</span>
+                                    <span class="option-desc">Extension is slow or freezing</span>
+                                </div>
+                            </label>
+                            
+                            <label class="issue-type-option">
+                                <input type="radio" name="issue-type" value="other">
+                                <div class="option-content">
+                                    <span class="option-icon">❓</span>
+                                    <span class="option-label">Other Issue</span>
+                                    <span class="option-desc">Something else not listed here</span>
+                                </div>
+                            </label>
+                        </div>
+                        <!-- Validation error message -->
+                        <div class="validation-message" id="issue-type-error">
+                            Please select an issue type
+                        </div>
+                    </div>
+
+                    <!-- Your Info -->
+                    <div class="form-section">
+                        <h3>Your Information</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="user-name" class="form-label required">Your Name</label>
+                                <input type="text" id="user-name" name="user-name" class="form-input" placeholder="John Doe">
+                            </div>
+                            <div class="form-group">
+                                <label for="user-email" class="form-label required">Your Email</label>
+                                <input type="email" id="user-email" name="user-email" class="form-input" placeholder="your.email@school.org">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Issue Details -->
+                    <div class="form-section">
+                        <h3>Issue Details</h3>
+                        
+                        <div class="form-group">
+                            <label for="issue-title" class="form-label required">Brief Description</label>
+                            <input type="text" id="issue-title" name="issue-title" class="form-input" placeholder="e.g., Chatbot won't open on Canvas homepage">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="issue-description" class="form-label required">Detailed Description</label>
+                            <textarea id="issue-description" name="issue-description" class="form-textarea" rows="5" placeholder="Please describe the issue in detail. Include:
+- What were you trying to do?
+- What happened instead?
+- Any error messages you saw?
+- Does it happen every time or sometimes?"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="steps-to-reproduce" class="form-label">Steps to Reproduce (Optional)</label>
+                            <textarea id="steps-to-reproduce" name="steps-to-reproduce" class="form-textarea" rows="4" placeholder="1. Go to Canvas homepage
+2. Click on extension icon
+3. Click 'Open Chatbot'
+4. Nothing happens"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- System Info -->
+                    <div class="form-section">
+                        <h3>System Information</h3>
+                        <p class="form-help">This helps us diagnose the issue faster.</p>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="browser" class="form-label">Browser</label>
+                                <select id="browser" name="browser" class="form-select">
+                                    <option value="">Select your browser</option>
+                                    <option value="chrome">Google Chrome</option>
+                                    <option value="edge">Microsoft Edge</option>
+                                    <option value="brave">Brave</option>
+                                    <option value="other">Other Chromium Browser</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="os" class="form-label">Operating System</label>
+                                <select id="os" name="os" class="form-select">
+                                    <option value="">Select your OS</option>
+                                    <option value="windows">Windows</option>
+                                    <option value="mac">macOS</option>
+                                    <option value="chromeos">Chrome OS</option>
+                                    <option value="linux">Linux</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Have you tried these troubleshooting steps?</label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" name="tried-refresh" value="yes">
+                                    <span class="checkbox-label">Refreshed the Canvas page</span>
+                                </label>
+                                <label class="checkbox-option">
+                                    <input type="checkbox" name="tried-restart" value="yes">
+                                    <span class="checkbox-label">Restarted the browser</span>
+                                </label>
+                                <label class="checkbox-option">
+                                    <input type="checkbox" name="tried-reinstall" value="yes">
+                                    <span class="checkbox-label">Reinstalled the extension</span>
+                                </label>
+                                <label class="checkbox-option">
+                                    <input type="checkbox" name="tried-docs" value="yes">
+                                    <span class="checkbox-label">Checked the troubleshooting guide</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Additional Info -->
+                    <div class="form-section">
+                        <h3>Additional Information (Optional)</h3>
+                        
+                        <div class="form-group">
+                            <label for="additional-info" class="form-label">Anything else we should know?</label>
+                            <textarea id="additional-info" name="additional-info" class="form-textarea" rows="3" placeholder="Any other context that might help us understand the issue..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Submit -->
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submit-issue">
+                            <span class="btn-icon">📨</span>
+                            Submit Issue Report
+                        </button>
+                        <p class="form-note">Your report will be sent to the development team at <strong>nnguyenminh2801@gmail.com</strong></p>
+                    </div>
+                </form>
+
+                <!-- Success Message (hidden by default) -->
+                <div id="success-message" class="success-message" style="display: none;">
+                    <div class="success-icon-large">✅</div>
+                    <h2>Issue Report Submitted!</h2>
+                    <p>Thank you for your report. We've received your issue and will get back to you at <strong id="submitted-email"></strong> as soon as possible.</p>
+                    <p class="success-note">In the meantime, you might want to check our <a href="guide-troubleshooting.html">Troubleshooting Guide</a> for quick solutions.</p>
+                    <div class="success-actions">
+                        <a href="docs-hub.html" class="btn btn-secondary">Back to Documentation</a>
+                        <button class="btn btn-primary" id="submit-another">Submit Another Issue</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="docs-footer">
+            <div class="footer-content">
+                <p>Canvas AI Assistant v1.0.0</p>
+                <p>© 2024 Christ Church School. All rights reserved.</p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="report-issue.js"></script>
+</body>
+</html>

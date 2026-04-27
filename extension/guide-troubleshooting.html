@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Troubleshooting Guide - Canvas AI Assistant</title>
+    <link rel="stylesheet" href="docs-styles.css">
+</head>
+<body>
+    <div class="docs-container">
+        <!-- Header -->
+        <header class="docs-header">
+            <div class="header-content">
+                <a href="docs-hub.html" class="back-link">
+                    <span class="back-icon">←</span>
+                    Back to Documentation
+                </a>
+                <div class="logo-section">
+                    <img src="/final-school-logo.png" alt="Canvas AI" class="docs-logo">
+                    <div class="logo-text">
+                        <h1>Canvas AI Assistant</h1>
+                        <span class="subtitle">Troubleshooting Guide</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="docs-main guide-content">
+            <!-- Guide Header -->
+            <div class="guide-header">
+                <div class="guide-icon">🔧</div>
+                <div class="guide-title-section">
+                    <h1>Troubleshooting Guide</h1>
+                    <p class="guide-subtitle">Solutions to common issues and how to resolve them</p>
+                </div>
+            </div>
+
+            <!-- Quick Links -->
+            <div class="quick-links-box">
+                <h3>Jump to Issue:</h3>
+                <div class="quick-links-grid">
+                    <a href="#extension-not-working" class="quick-link">Extension Not Working</a>
+                    <a href="#canvas-not-connecting" class="quick-link">Canvas Won't Connect</a>
+                    <a href="#chatbot-not-appearing" class="quick-link">Chatbot Not Appearing</a>
+                    <a href="#data-not-syncing" class="quick-link">Data Not Syncing</a>
+                    <a href="#ai-not-responding" class="quick-link">AI Not Responding</a>
+                    <a href="#blackbaud-issues" class="quick-link">Blackbaud Issues</a>
+                    <a href="#performance-issues" class="quick-link">Performance Issues</a>
+                    <a href="#token-expired" class="quick-link">Token Expired</a>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <article class="guide-article troubleshooting-article">
+                
+                <!-- Issue 1: Extension Not Working -->
+                <section class="trouble-section" id="extension-not-working">
+                    <div class="trouble-header">
+                        <span class="trouble-icon">❌</span>
+                        <div class="trouble-title">
+                            <h2>Extension Not Working at All</h2>
+                            <p>The extension icon is grayed out or nothing happens when clicked</p>
+                        </div>
+                    </div>
+                    <div class="trouble-content">
+                        <h4>Possible Causes & Solutions:</h4>
+                        
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">1</span>
+                                <h5>Extension is disabled</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Go to <code>chrome://extensions</code> and make sure Canvas AI Assistant is enabled (toggle should be blue).</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">2</span>
+                                <h5>Browser needs restart</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Close all Chrome windows completely and restart the browser. Sometimes extensions need a full restart to work properly.</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">3</span>
+                                <h5>Corrupted installation</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Remove the extension from <code>chrome://extensions</code> and reinstall it.</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">4</span>
+                                <h5>Not on Canvas website</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> The extension only fully activates on Canvas (instructure.com) websites. Navigate to your school's Canvas page first.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Issue 2: Canvas Not Connecting -->
+                <section class="trouble-section" id="canvas-not-connecting">
+                    <div class="trouble-header">
+                        <span class="trouble-icon">🔐</span>
+                        <div class="trouble-title">
+                            <h2>Canvas Won't Connect</h2>
+                            <p>Token validation fails or connection shows error</p>
+                        </div>
+                    </div>
+                    <div class="trouble-content">
+                        <h4>Possible Causes & Solutions:</h4>
+                        
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">1</span>
+                                <h5>Invalid or expired token</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Generate a new token in Canvas (Account → Settings → New Access Token) and update it in the extension settings.</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">2</span>
+                                <h5>Token copied incorrectly</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Make sure you copied the entire token without extra spaces. Tokens are usually long strings of random characters.</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">3</span>
+                                <h5>School's Canvas URL not recognized</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Make sure you're accessing Canvas through your school's official URL (e.g., yourschool.instructure.com).</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">4</span>
+                                <h5>Network/firewall blocking</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Try on a different network (e.g., home WiFi vs school WiFi). Some school networks may block API requests.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Issue 3: Chatbot Not Appearing -->
+                <section class="trouble-section" id="chatbot-not-appearing">
+                    <div class="trouble-header">
+                        <span class="trouble-icon">🤖</span>
+                        <div class="trouble-title">
+                            <h2>Chatbot Not Appearing</h2>
+                            <p>Clicking "Open Chatbot" does nothing or shows error</p>
+                        </div>
+                    </div>
+                    <div class="trouble-content">
+                        <h4>Possible Causes & Solutions:</h4>
+                        
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">1</span>
+                                <h5>Not on a Canvas page</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> The chatbot only works on Canvas pages. Navigate to your school's Canvas site first (any page with instructure.com in the URL).</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">2</span>
+                                <h5>Page hasn't fully loaded</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Wait for the Canvas page to fully load, then try again. You can also refresh the page (Cmd+R on Mac, Ctrl+R on Windows).</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">3</span>
+                                <h5>Content script not injected</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Refresh the Canvas page. If that doesn't work, go to <code>chrome://extensions</code>, disable then re-enable the extension, and refresh Canvas again.</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">4</span>
+                                <h5>Chatbot is minimized</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Look for a small circular icon in the corner of your screen. Click it to expand the chatbot.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Issue 4: Data Not Syncing -->
+                <section class="trouble-section" id="data-not-syncing">
+                    <div class="trouble-header">
+                        <span class="trouble-icon">🔄</span>
+                        <div class="trouble-title">
+                            <h2>Data Not Syncing</h2>
+                            <p>Courses, assignments, or grades not showing or outdated</p>
+                        </div>
+                    </div>
+                    <div class="trouble-content">
+                        <h4>Possible Causes & Solutions:</h4>
+                        
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">1</span>
+                                <h5>Haven't synced yet</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Click the "Refresh Data" button in the extension popup, or reload any Canvas page to trigger a sync.</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">2</span>
+                                <h5>Token doesn't have proper permissions</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Some schools restrict what data tokens can access. Try generating a new token and make sure you didn't limit its scope.</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">3</span>
+                                <h5>Cached data is stale</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Go to Settings → Features → Click "Clear Cached Data", then refresh your Canvas page.</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">4</span>
+                                <h5>Auto-sync is disabled</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Go to Settings → Features and enable "Automatically sync Canvas data".</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Issue 5: AI Not Responding -->
+                <section class="trouble-section" id="ai-not-responding">
+                    <div class="trouble-header">
+                        <span class="trouble-icon">💬</span>
+                        <div class="trouble-title">
+                            <h2>AI Not Responding Properly</h2>
+                            <p>Chatbot shows errors or gives generic responses</p>
+                        </div>
+                    </div>
+                    <div class="trouble-content">
+                        <h4>Possible Causes & Solutions:</h4>
+                        
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">1</span>
+                                <h5>No Canvas data available</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> The AI needs your Canvas data to give personalized responses. Make sure your Canvas token is connected and data has synced.</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">2</span>
+                                <h5>Network connectivity issue</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Check your internet connection. The AI requires an internet connection to process requests.</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">3</span>
+                                <h5>Extension context invalidated</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> If you see "Extension Updated" message, simply refresh the Canvas page. This happens when the extension is updated or reloaded.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Issue 6: Blackbaud Issues -->
+                <section class="trouble-section" id="blackbaud-issues">
+                    <div class="trouble-header">
+                        <span class="trouble-icon">📅</span>
+                        <div class="trouble-title">
+                            <h2>Blackbaud Connection Issues</h2>
+                            <p>Can't connect or schedule not showing</p>
+                        </div>
+                    </div>
+                    <div class="trouble-content">
+                        <h4>Possible Causes & Solutions:</h4>
+                        
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">1</span>
+                                <h5>Wrong credentials</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Use the same credentials you use for MySchoolApp. If you've forgotten them, contact your school's IT department.</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">2</span>
+                                <h5>School doesn't use Blackbaud</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Blackbaud integration only works if your school uses Blackbaud/MySchoolApp. Check with your school if unsure.</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">3</span>
+                                <h5>Authorization popup blocked</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Make sure your browser allows popups for the extension. Check for a blocked popup notification in the address bar.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Issue 7: Performance Issues -->
+                <section class="trouble-section" id="performance-issues">
+                    <div class="trouble-header">
+                        <span class="trouble-icon">🐌</span>
+                        <div class="trouble-title">
+                            <h2>Performance Issues</h2>
+                            <p>Extension is slow or Canvas pages load slowly</p>
+                        </div>
+                    </div>
+                    <div class="trouble-content">
+                        <h4>Possible Causes & Solutions:</h4>
+                        
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">1</span>
+                                <h5>Too much cached data</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Go to Settings → Features → "Clear Cached Data" to reset the extension's stored data.</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">2</span>
+                                <h5>Many browser extensions running</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Try disabling other extensions temporarily to see if performance improves. Too many extensions can slow down your browser.</p>
+                            </div>
+                        </div>
+
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">3</span>
+                                <h5>Browser needs restart</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p><strong>Fix:</strong> Close and reopen Chrome. Browsers can slow down after running for a long time.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Issue 8: Token Expired -->
+                <section class="trouble-section" id="token-expired">
+                    <div class="trouble-header">
+                        <span class="trouble-icon">⏰</span>
+                        <div class="trouble-title">
+                            <h2>Token Expired</h2>
+                            <p>Extension suddenly stopped working after a period of time</p>
+                        </div>
+                    </div>
+                    <div class="trouble-content">
+                        <h4>Solution:</h4>
+                        
+                        <div class="solution-item">
+                            <div class="solution-header">
+                                <span class="solution-number">1</span>
+                                <h5>Generate a new token</h5>
+                            </div>
+                            <div class="solution-body">
+                                <p>If you set an expiration date on your token, you'll need to generate a new one:</p>
+                                <ol class="solution-steps">
+                                    <li>Go to Canvas → Account → Settings</li>
+                                    <li>Find "Access Tokens" section</li>
+                                    <li>Delete the old token</li>
+                                    <li>Click "+ New Access Token"</li>
+                                    <li>Set a new expiration date (or leave blank for no expiration)</li>
+                                    <li>Copy the new token</li>
+                                    <li>Update it in extension Settings → Authentication</li>
+                                </ol>
+                            </div>
+                        </div>
+
+                        <div class="callout callout-tip">
+                            <span class="callout-icon">💡</span>
+                            <div class="callout-content">
+                                <strong>Tip:</strong> Consider setting your token to expire at the end of the school year, so you don't have to renew it frequently.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Still Need Help -->
+                <section class="guide-section help-section">
+                    <div class="help-box">
+                        <h3>Still Having Issues?</h3>
+                        <p>If none of these solutions worked, please report your issue and we'll help you personally.</p>
+                        <div class="help-buttons">
+                            <a href="report-issue.html" class="btn btn-primary btn-lg">
+                                <span class="btn-icon">🐛</span>
+                                Report an Issue
+                            </a>
+                        </div>
+                    </div>
+                </section>
+            </article>
+        </main>
+
+        <!-- Footer -->
+        <footer class="docs-footer">
+            <div class="footer-content">
+                <p>Canvas AI Assistant v1.0.0</p>
+                <p>© 2024 Christ Church School. All rights reserved.</p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="docs-navigation.js"></script>
+</body>
+</html>
