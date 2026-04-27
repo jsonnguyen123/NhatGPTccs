@@ -1,3 +1,5 @@
+console.log('=== BUILD MARKER 2026-04-27T23:30 PKCE-DEBUG-v3 ===');
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -61,6 +63,7 @@ const logger = winston.createLogger({
 });
 
 const app = express();
+app.set('trust proxy', 1); 
 const PORT = process.env.PORT || 3000;
 
 const rateLimiter = new RateLimiterMemory({
@@ -819,6 +822,13 @@ app.post('/api/blackbaud/oauth/token', oauthRateLimiter, async (req, res) => {
     const { code, redirect_uri, canvas_user_id, code_verifier } = req.body;
     if (!validateRedirectUri(redirect_uri)) return res.status(400).json({ success: false, error: 'Invalid redirect_uri' });
     if (!canvas_user_id) return res.status(400).json({ success: false, error: 'canvas_user_id is required' });
+    
+    logger.info('BB OAuth verifier', {
+        hasVerifier: !!code_verifier,
+        len: code_verifier?.length,
+        sample: code_verifier?.slice(0, 10)
+      });
+    
     if (!code_verifier || code_verifier.length < 43 || code_verifier.length > 128) {
         return res.status(400).json({ success: false, error: 'Invalid code_verifier length' });
     }

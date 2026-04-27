@@ -293,7 +293,7 @@ class BlackbaudAuthService {
             throw new Error('Please log in to Canvas first before connecting Blackbaud.');
         }
 
-        console.log('PKCE length:', codeVerifier?.length, codeVerifier);
+        console.log('PKCE length:', codeVerifier?.length);
 
         const response = await fetch('https://canvas-ai-assistant-production.up.railway.app/api/blackbaud/oauth/token', {
             method: 'POST',
