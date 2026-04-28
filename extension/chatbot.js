@@ -240,7 +240,7 @@ if (window._canvasAIChatbotLoaded) {
 
             this.boundHandlers.syncHeaderClick = () => {
                 console.log(`Chatbot [${this.instanceId}]: Header sync clicked`);
-                this.triggerBackgroundSync();
+                this.triggerBackgroundSync(); 
             };
         
             // Attach event listeners
