@@ -1,4 +1,3 @@
-// Background.js - Background Service Worker
 // Handles extension lifecycle, data management, and API communication
 class OAuthService {
     constructor() {
@@ -170,7 +169,7 @@ class OAuthService {
 
         this._log('Token exchange successful');
         return tokenData;
-    }
+    } 
 
     async validateToken(token) {
         try {
