@@ -9,7 +9,7 @@
     "test": "jest",
     "lint": "eslint .",
     "format": "prettier --write ."
-  },
+  }, 
   "keywords": [
     "canvas",
     "ai",

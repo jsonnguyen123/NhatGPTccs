@@ -7,7 +7,7 @@ const cron = require('node-cron');
 const winston = require('winston');
 const fs = require('fs');
 const { RateLimiterMemory } = require('rate-limiter-flexible');
-const rateLimit = require('express-rate-limit'); 
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const crypto = require('crypto');
 
