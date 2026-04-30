@@ -59,6 +59,11 @@ const AGENT_CONFIG = {
             fallbackResponse: "I couldn't find your course list. Please sync your Canvas data.",
             maxItemsToShow: 50
         },
+
+        assignmentDetail: {
+            systemPrompt: "You help students inspect a specific assignment's instructions, rubric, submission requirements, due date, and current submission status.",
+            fallbackResponse: "I couldn't find the assignment details for that request."
+        },
         
         // 📧 NEW: Gmail Email Tool Config
         gmailEmail: {

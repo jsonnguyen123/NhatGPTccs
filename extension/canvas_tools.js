@@ -15,15 +15,26 @@ const MIN_COURSE_MATCH_WORD_LENGTH = 4;
 // Base Tool Class
 class CanvasTool {
     constructor(toolConfig = {}) {
-        this.name = 'BaseTool';
+        this.name = new.target?.name?.replace(/Tool$/, '') || 'BaseTool';
         this.globalConfig = getAgentConfig();
         this.config = this.mergeConfig(toolConfig);
     }
     
     mergeConfig(toolConfig) {
-        const toolName = this.name.toLowerCase().replace('tool', '');
-        const defaultConfig = this.globalConfig.toolPrompts?.[toolName] || {};
+        const defaultConfig = this.globalConfig.toolPrompts?.[this.getConfigKey()] || {};
         return { ...defaultConfig, ...toolConfig };
+    }
+
+    getConfigKey() {
+        const explicitConfigKeys = {
+            Announcement: 'announcementReader'
+        };
+
+        if (explicitConfigKeys[this.name]) {
+            return explicitConfigKeys[this.name];
+        }
+
+        return this.name.charAt(0).toLowerCase() + this.name.slice(1);
     }
 
     getCourseKeywords() {

@@ -321,23 +321,8 @@ class CanvasAIPopup {
             const data = result.canvasData;
 
             if (data) {
-                // Update stats
-                const coursesCount = document.getElementById('courses-count');
-                const assignmentsCount = document.getElementById('assignments-count');
-                const avgGrade = document.getElementById('avg-grade');
-
-                if (coursesCount) coursesCount.textContent = data.courses?.length || 0;
-                if (assignmentsCount) assignmentsCount.textContent = data.assignments?.length || 0;
-                
-                if (avgGrade && data.courses?.length > 0) {
-                    const grades = data.courses
-                        .map(c => c.grade)
-                        .filter(g => g != null && !isNaN(g));
-                    if (grades.length > 0) {
-                        const avg = Math.round(grades.reduce((a, b) => a + b, 0) / grades.length);
-                        avgGrade.textContent = `${avg}%`;
-                    }
-                }
+                this.canvasData = data;
+                this.updateDataDisplay();
 
                 // Update data status
                 const dataStatus = document.getElementById('data-status');
@@ -354,9 +339,6 @@ class CanvasAIPopup {
                     }
                     dataStatus.className = 'status-value success';
                 }
-
-                // Update activity list
-                this.updateActivityList();
             } else {
                 const dataStatus = document.getElementById('data-status');
                 if (dataStatus) {
@@ -508,12 +490,17 @@ class CanvasAIPopup {
             const coursesCount = this.canvasData.courses ? this.canvasData.courses.length : 0;
             const assignmentsCount = this.canvasData.assignments ? 
                 this.canvasData.assignments.filter(a => a.dueDate && new Date(a.dueDate) > new Date()).length : 0;
+            const grades = this.canvasData.courses
+                ? this.canvasData.courses
+                    .map(course => Number(course.grade))
+                    .filter(grade => Number.isFinite(grade))
+                : [];
             
             document.getElementById('courses-count').textContent = coursesCount;
             document.getElementById('assignments-count').textContent = assignmentsCount;
-            
-            // For demo, show placeholder grade
-            document.getElementById('avg-grade').textContent = '--';
+            document.getElementById('avg-grade').textContent = grades.length > 0
+                ? `${Math.round(grades.reduce((sum, grade) => sum + grade, 0) / grades.length)}%`
+                : '--';
             
         } catch (error) {
             console.error('Popup: Error updating stats:', error);
