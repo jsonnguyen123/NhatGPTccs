@@ -403,7 +403,7 @@ const GEMINI_TOOL_DECLARATIONS = [
             },
             {
                 name: "get_blackbaud_calendar",
-                description: "Get the student's Blackbaud school calendar events for a date range using YYYY-MM-DD dates. Use this when the user asks about Blackbaud events, the school calendar, campus events, or schedule items that should come from Blackbaud instead of Canvas. Defaults to the current month if no dates are provided.",
+                description: "Get Blackbaud school calendar events for a YYYY-MM-DD date range. Use this for Blackbaud events, school calendar questions, campus events, or schedule items that should come from Blackbaud. Defaults to the current month when dates are omitted.",
                 parameters: {
                     type: "object",
                     properties: {

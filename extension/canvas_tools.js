@@ -10,6 +10,8 @@ function getAgentConfig() {
     };
 }
 
+const MIN_COURSE_MATCH_WORD_LENGTH = 4;
+
 // Base Tool Class
 class CanvasTool {
     constructor(toolConfig = {}) {
@@ -36,7 +38,6 @@ class CanvasTool {
 
     findCourse(message, canvasData) {
         if (!canvasData?.courses) return null;
-        const MIN_COURSE_MATCH_WORD_LENGTH = 4;
 
         const lowerMsg = message.toLowerCase();
 
@@ -210,14 +211,7 @@ class BlackbaudCalendarTool extends CanvasTool {
 
     formatEvents(events, startDate, endDate) {
         const visibleEvents = [...events]
-            .sort((a, b) => {
-                const aStart = a.start_date || a.start;
-                const bStart = b.start_date || b.start;
-                if (!aStart && !bStart) return 0;
-                if (!aStart) return 1;
-                if (!bStart) return -1;
-                return new Date(aStart) - new Date(bStart);
-            })
+            .sort((a, b) => this.compareEventStartDates(a, b))
             .slice(0, this.config.maxItemsToShow || 10);
 
         let response = `📅 **Blackbaud Calendar Events** (${startDate} → ${endDate})\n\n`;
@@ -244,6 +238,25 @@ class BlackbaudCalendarTool extends CanvasTool {
         }
 
         return response;
+    }
+
+    compareEventStartDates(firstEvent, secondEvent) {
+        const firstTime = this.getEventStartTime(firstEvent);
+        const secondTime = this.getEventStartTime(secondEvent);
+
+        if (firstTime == null && secondTime == null) return 0;
+        if (firstTime == null) return 1;
+        if (secondTime == null) return -1;
+
+        return firstTime - secondTime;
+    }
+
+    getEventStartTime(event) {
+        const startValue = event.start_date || event.start;
+        if (!startValue) return null;
+
+        const parsedTime = new Date(startValue).getTime();
+        return Number.isNaN(parsedTime) ? null : parsedTime;
     }
 
     formatError(errorMessage = '', needsReconnect = false) {

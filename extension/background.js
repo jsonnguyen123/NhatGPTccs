@@ -1677,6 +1677,7 @@ class CanvasAIBackground {
             resolvedEnd = this.toBlackbaudIsoDate(new Date(start.getFullYear(), start.getMonth() + 1, 0));
         }
 
+        // Accept reversed input ranges and normalize them into chronological order.
         if (resolvedStart > resolvedEnd) {
             [resolvedStart, resolvedEnd] = [resolvedEnd, resolvedStart];
         }
