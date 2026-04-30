@@ -402,6 +402,23 @@ const GEMINI_TOOL_DECLARATIONS = [
                 }
             },
             {
+                name: "get_blackbaud_calendar",
+                description: "Get the student's Blackbaud school calendar events for a date range. Use this when the user asks about Blackbaud events, the school calendar, campus events, or schedule items that should come from Blackbaud instead of Canvas. Defaults to the current month if no dates are provided.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        start_date: {
+                            type: "string",
+                            description: "Optional start date in YYYY-MM-DD format."
+                        },
+                        end_date: {
+                            type: "string",
+                            description: "Optional end date in YYYY-MM-DD format."
+                        }
+                    }
+                }
+            },
+            {
                 name: "get_grades",
                 description: "Get the student's grades, scores, percentages, GPA, or performance data from Canvas. Use this when the user asks about grades, scores, how they're doing in a class, what they got on an assignment, their average, failing/passing status, missing grades, or grade trends.",
                 parameters: {

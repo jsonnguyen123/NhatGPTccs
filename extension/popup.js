@@ -356,7 +356,7 @@ class CanvasAIPopup {
                 }
 
                 // Update activity list
-                this.updateActivityList(data);
+                this.updateActivityList();
             } else {
                 const dataStatus = document.getElementById('data-status');
                 if (dataStatus) {
@@ -687,39 +687,6 @@ class CanvasAIPopup {
         } catch (error) {
             console.error('Canvas AI Assistant: Error opening chatbot:', error);
             this.showError('Failed to open chatbot: ' + error.message);
-        } finally {
-            this.hideLoading();
-        }
-    }
-
-    async refreshData() {
-        console.log('Popup: Refreshing data...');
-        
-        if (!this.currentTab || !this.currentTab.url.includes('instructure.com')) {
-            this.showError('Please open Canvas to refresh data');
-            return;
-        }
-
-        this.showLoading('Refreshing Canvas data...');
-
-        try {
-            const response = await chrome.runtime.sendMessage({
-                type: 'REFRESH_CANVAS_DATA',
-                tab: this.currentTab
-            });
-
-            console.log('Popup: Refresh data response:', response);
-
-            if (response && response.success) {
-                this.canvasData = response.data;
-                this.updateDataDisplay();
-                this.showSuccess('Data refreshed successfully');
-            } else {
-                this.showError('Failed to refresh data: ' + (response?.error || 'Unknown error'));
-            }
-        } catch (error) {
-            console.error('Canvas AI Assistant: Error refreshing data:', error);
-            this.showError('Failed to refresh data: ' + error.message);
         } finally {
             this.hideLoading();
         }

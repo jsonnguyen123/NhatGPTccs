@@ -1193,6 +1193,12 @@ class CanvasAIBackground {
                     await this.handleFetchAssignmentDetail(request, sendResponse);
                     break;
 
+                case 'FETCH_BLACKBAUD_CALENDAR':
+                    await this.handleBlackbaudRequest({
+                        endpoint: this.buildBlackbaudCalendarEndpoint(request.startDate, request.endDate)
+                    }, sendResponse);
+                    break;
+
                 case 'FETCH_GRADES':
                     this.handleFetchGrades(sendResponse);
                     return true;
@@ -1624,6 +1630,50 @@ class CanvasAIBackground {
             console.error('Blackbaud request failed:', error.message);
             sendResponse({ success: false, error: error.message });
         }
+    }
+
+    normalizeBlackbaudDate(dateString) {
+        if (!dateString || typeof dateString !== 'string') return null;
+        const trimmed = dateString.trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return null;
+        const parsed = new Date(`${trimmed}T00:00:00`);
+        return Number.isNaN(parsed.getTime()) ? null : trimmed;
+    }
+
+    toBlackbaudIsoDate(date) {
+        return date.toISOString().split('T')[0];
+    }
+
+    getBlackbaudCalendarDateRange(startDate, endDate) {
+        const now = new Date();
+        let resolvedStart = this.normalizeBlackbaudDate(startDate);
+        let resolvedEnd = this.normalizeBlackbaudDate(endDate);
+
+        if (!resolvedStart && !resolvedEnd) {
+            resolvedStart = this.toBlackbaudIsoDate(new Date(now.getFullYear(), now.getMonth(), 1));
+            resolvedEnd = this.toBlackbaudIsoDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+        } else if (!resolvedStart && resolvedEnd) {
+            const end = new Date(`${resolvedEnd}T00:00:00`);
+            resolvedStart = this.toBlackbaudIsoDate(new Date(end.getFullYear(), end.getMonth(), 1));
+        } else if (resolvedStart && !resolvedEnd) {
+            const start = new Date(`${resolvedStart}T00:00:00`);
+            resolvedEnd = this.toBlackbaudIsoDate(new Date(start.getFullYear(), start.getMonth() + 1, 0));
+        }
+
+        if (resolvedStart > resolvedEnd) {
+            [resolvedStart, resolvedEnd] = [resolvedEnd, resolvedStart];
+        }
+
+        return { startDate: resolvedStart, endDate: resolvedEnd };
+    }
+
+    buildBlackbaudCalendarEndpoint(startDate, endDate) {
+        const range = this.getBlackbaudCalendarDateRange(startDate, endDate);
+        const params = new URLSearchParams({
+            start_date: range.startDate,
+            end_date: range.endDate
+        });
+        return `/school/v1/calendars/events?${params.toString()}`;
     }
 
     // Simplified helper - just stores locally for backup/debugging
@@ -3269,6 +3319,26 @@ class CanvasAIBackground {
                 });
                 return text;
             }
+
+            if (toolName === 'get_blackbaud_calendar') {
+                const events = Array.isArray(toolResult?.value)
+                    ? toolResult.value
+                    : (Array.isArray(toolResult) ? toolResult : []);
+
+                if (events.length === 0) return "No Blackbaud calendar events found for that date range.";
+
+                let text = `📅 **Blackbaud Calendar Events** (${events.length}):\n\n`;
+                events.slice(0, 10).forEach(event => {
+                    const title = event.title || event.name || 'Untitled Event';
+                    const start = event.start_date || event.start;
+                    const when = start
+                        ? new Date(start).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                        : 'Date unavailable';
+                    const location = event.location || event.location_name;
+                    text += `• **${title}** — ${when}${location ? ` @ ${location}` : ''}\n`;
+                });
+                return text;
+            }
     
             if (toolName === 'get_grades') {
                 if (Array.isArray(toolResult)) {
@@ -3420,6 +3490,12 @@ class CanvasAIBackground {
                 console.log(`🔧 get_assignments: Returning ${assignments.length} assignments`);
                 return assignments;
             }
+
+            case 'get_blackbaud_calendar':
+                return await this._promisifyHandler(
+                    (req, sr) => this.handleBlackbaudRequest(req, sr),
+                    [{ endpoint: this.buildBlackbaudCalendarEndpoint(args.start_date, args.end_date) }]
+                );
     
             case 'get_grades': {
                 const stored = await chrome.storage.local.get('canvasData');
