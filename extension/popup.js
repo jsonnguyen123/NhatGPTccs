@@ -490,11 +490,9 @@ class CanvasAIPopup {
             const coursesCount = this.canvasData.courses ? this.canvasData.courses.length : 0;
             const assignmentsCount = this.canvasData.assignments ? 
                 this.canvasData.assignments.filter(a => a.dueDate && new Date(a.dueDate) > new Date()).length : 0;
-            const grades = this.canvasData.courses
-                ? this.canvasData.courses
-                    .map(course => Number(course.grade))
-                    .filter(grade => Number.isFinite(grade))
-                : [];
+            const grades = (this.canvasData.courses || [])
+                .map(course => Number(course.grade))
+                .filter(grade => Number.isFinite(grade));
             
             document.getElementById('courses-count').textContent = coursesCount;
             document.getElementById('assignments-count').textContent = assignmentsCount;

@@ -1653,8 +1653,12 @@ class CanvasAIBackground {
         if (!dateString || typeof dateString !== 'string') return null;
         const trimmed = dateString.trim();
         if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return null;
-        const parsed = new Date(`${trimmed}T00:00:00`);
+        const parsed = this.parseBlackbaudDate(trimmed);
         return Number.isNaN(parsed.getTime()) ? null : trimmed;
+    }
+
+    parseBlackbaudDate(dateString) {
+        return new Date(`${dateString}T00:00:00`);
     }
 
     toBlackbaudIsoDate(date) {
@@ -1670,16 +1674,16 @@ class CanvasAIBackground {
             resolvedStart = this.toBlackbaudIsoDate(new Date(now.getFullYear(), now.getMonth(), 1));
             resolvedEnd = this.toBlackbaudIsoDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
         } else if (!resolvedStart && resolvedEnd) {
-            const end = new Date(`${resolvedEnd}T00:00:00`);
+            const end = this.parseBlackbaudDate(resolvedEnd);
             resolvedStart = this.toBlackbaudIsoDate(new Date(end.getFullYear(), end.getMonth(), 1));
         } else if (resolvedStart && !resolvedEnd) {
-            const start = new Date(`${resolvedStart}T00:00:00`);
+            const start = this.parseBlackbaudDate(resolvedStart);
             resolvedEnd = this.toBlackbaudIsoDate(new Date(start.getFullYear(), start.getMonth() + 1, 0));
         }
 
         // Accept reversed input ranges and normalize them into chronological order.
-        const startTime = new Date(`${resolvedStart}T00:00:00`).getTime();
-        const endTime = new Date(`${resolvedEnd}T00:00:00`).getTime();
+        const startTime = this.parseBlackbaudDate(resolvedStart).getTime();
+        const endTime = this.parseBlackbaudDate(resolvedEnd).getTime();
         if (startTime > endTime) {
             [resolvedStart, resolvedEnd] = [resolvedEnd, resolvedStart];
         }
