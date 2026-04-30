@@ -872,14 +872,6 @@ class CanvasAIBackground {
             console.warn('Failed to clean legacy tokens:', e);
         }
         
-        chrome.action.onClicked.addListener(async (tab) => {
-            console.log('Background: Extension icon clicked, opening side panel');
-            try {
-                await chrome.sidePanel.open({ windowId: tab.windowId });
-            } catch (error) {
-                console.error('Background: Failed to open side panel:', error);
-            }
-        });
     }
 
     setupEventListeners() {
@@ -1315,19 +1307,6 @@ class CanvasAIBackground {
     
                     return true;
                 }
-
-                case 'OPEN_SIDE_PANEL':
-                    try {
-                        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-                        if (tab) {
-                            await chrome.sidePanel.open({ windowId: tab.windowId });
-                        }
-                        sendResponse({ success: true });
-                    } catch (error) {
-                        console.error('Background: Failed to open side panel:', error);
-                        sendResponse({ success: false, error: error.message });
-                    }
-                    break;
 
                 case 'BACKGROUND_SYNC':
                     console.log('Background: Received background sync request');
