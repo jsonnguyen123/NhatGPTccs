@@ -36,6 +36,7 @@ class CanvasTool {
 
     findCourse(message, canvasData) {
         if (!canvasData?.courses) return null;
+        const MIN_COURSE_MATCH_WORD_LENGTH = 4;
 
         const lowerMsg = message.toLowerCase();
 
@@ -61,7 +62,7 @@ class CanvasTool {
 
         return canvasData.courses.find(c => {
             if (!c.name) return false;
-            const words = c.name.toLowerCase().split(/[\s\-]+/).filter(w => w.length > 3);
+            const words = c.name.toLowerCase().split(/[\s\-]+/).filter(w => w.length >= MIN_COURSE_MATCH_WORD_LENGTH);
             return words.some(word => lowerMsg.includes(word));
         }) || null;
     }
@@ -183,20 +184,18 @@ class BlackbaudCalendarTool extends CanvasTool {
 
     async execute(message, canvasData, context = {}) {
         try {
-            const { startDate, endDate } = this.resolveDateRange(context);
             const response = await chrome.runtime.sendMessage({
                 type: 'FETCH_BLACKBAUD_CALENDAR',
-                startDate,
-                endDate
+                startDate: context.startDate,
+                endDate: context.endDate
             });
 
             if (!response?.success) {
-                return this.formatError(response?.error);
+                return this.formatError(response?.error, response?.needsReconnect);
             }
 
-            const events = Array.isArray(response.data?.value)
-                ? response.data.value
-                : (Array.isArray(response.data) ? response.data : []);
+            const events = Array.isArray(response.data?.events) ? response.data.events : [];
+            const { startDate, endDate } = response.data;
 
             if (events.length === 0) {
                 return `📅 No Blackbaud calendar events found from **${startDate}** to **${endDate}**.`;
@@ -209,55 +208,16 @@ class BlackbaudCalendarTool extends CanvasTool {
         }
     }
 
-    resolveDateRange(context = {}) {
-        const fallback = this.getCurrentMonthDateRange();
-        let startDate = this.normalizeDate(context.startDate);
-        let endDate = this.normalizeDate(context.endDate);
-
-        if (!startDate && !endDate) {
-            return fallback;
-        }
-
-        if (!startDate && endDate) {
-            const end = new Date(`${endDate}T00:00:00`);
-            startDate = this.toIsoDate(new Date(end.getFullYear(), end.getMonth(), 1));
-        }
-
-        if (startDate && !endDate) {
-            const start = new Date(`${startDate}T00:00:00`);
-            endDate = this.toIsoDate(new Date(start.getFullYear(), start.getMonth() + 1, 0));
-        }
-
-        if (startDate > endDate) {
-            [startDate, endDate] = [endDate, startDate];
-        }
-
-        return { startDate, endDate };
-    }
-
-    getCurrentMonthDateRange() {
-        const now = new Date();
-        return {
-            startDate: this.toIsoDate(new Date(now.getFullYear(), now.getMonth(), 1)),
-            endDate: this.toIsoDate(new Date(now.getFullYear(), now.getMonth() + 1, 0))
-        };
-    }
-
-    normalizeDate(value) {
-        if (!value || typeof value !== 'string') return null;
-        const trimmed = value.trim();
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return null;
-        const parsed = new Date(`${trimmed}T00:00:00`);
-        return Number.isNaN(parsed.getTime()) ? null : trimmed;
-    }
-
-    toIsoDate(date) {
-        return date.toISOString().split('T')[0];
-    }
-
     formatEvents(events, startDate, endDate) {
         const visibleEvents = [...events]
-            .sort((a, b) => new Date(a.start_date || a.start || 0) - new Date(b.start_date || b.start || 0))
+            .sort((a, b) => {
+                const aStart = a.start_date || a.start;
+                const bStart = b.start_date || b.start;
+                if (!aStart && !bStart) return 0;
+                if (!aStart) return 1;
+                if (!bStart) return -1;
+                return new Date(aStart) - new Date(bStart);
+            })
             .slice(0, this.config.maxItemsToShow || 10);
 
         let response = `📅 **Blackbaud Calendar Events** (${startDate} → ${endDate})\n\n`;
@@ -286,8 +246,8 @@ class BlackbaudCalendarTool extends CanvasTool {
         return response;
     }
 
-    formatError(errorMessage = '') {
-        if (/no blackbaud session|not authenticated|needs reconnect|proxy error: 401/i.test(errorMessage)) {
+    formatError(errorMessage = '', needsReconnect = false) {
+        if (needsReconnect) {
             return "📅 **Blackbaud Not Connected**\n\nConnect Blackbaud in Settings to view your school calendar events.";
         }
 

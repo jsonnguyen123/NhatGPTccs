@@ -1194,9 +1194,16 @@ class CanvasAIBackground {
                     break;
 
                 case 'FETCH_BLACKBAUD_CALENDAR':
-                    await this.handleBlackbaudRequest({
-                        endpoint: this.buildBlackbaudCalendarEndpoint(request.startDate, request.endDate)
-                    }, sendResponse);
+                    try {
+                        const calendarData = await this.fetchBlackbaudCalendarData(request.startDate, request.endDate);
+                        sendResponse({ success: true, data: calendarData });
+                    } catch (error) {
+                        sendResponse({
+                            success: false,
+                            error: error.message,
+                            needsReconnect: error.needsReconnect === true
+                        });
+                    }
                     break;
 
                 case 'FETCH_GRADES':
@@ -1592,43 +1599,53 @@ class CanvasAIBackground {
     }
 
 
+    async requestBlackbaudData(request) {
+        const canvasToken = await this.getCanvasToken();
+        if (!canvasToken) {
+            throw new Error('Not authenticated with Canvas');
+        }
+
+        const response = await fetch('https://canvas-ai-assistant-production.up.railway.app/api/blackbaud/proxy', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${canvasToken}`
+            },
+            body: JSON.stringify({
+                endpoint: request.endpoint,
+                method: request.method || 'GET',
+                body: request.body || null
+            })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            if (errData.needsReconnect) {
+                await chrome.storage.local.set({ bb_auth_status: 'disconnected' });
+            }
+
+            const error = new Error(`Blackbaud proxy error: ${response.status}`);
+            error.needsReconnect = Boolean(errData.needsReconnect);
+            throw error;
+        }
+
+        const data = await response.json();
+        return data.data || data;
+    }
+
     // 🛡️ FIX #4: Blackbaud requests now go through backend proxy
     // which adds the subscription key server-side
     async handleBlackbaudRequest(request, sendResponse) {
         try {
-            const canvasToken = await this.getCanvasToken();
-            if (!canvasToken) {
-                throw new Error('Not authenticated with Canvas');
-            }
-    
-            // 🛡️ FIX #4: No Blackbaud access token sent — server uses stored encrypted token
-            const response = await fetch('https://canvas-ai-assistant-production.up.railway.app/api/blackbaud/proxy', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${canvasToken}`
-                },
-                body: JSON.stringify({
-                    endpoint: request.endpoint,
-                    method: request.method || 'GET',
-                    body: request.body || null
-                    // 🛡️ REMOVED: accessToken — no longer sent from client
-                })
-            });
-    
-            if (!response.ok) {
-                const errData = await response.json().catch(() => ({}));
-                if (errData.needsReconnect) {
-                    await chrome.storage.local.set({ bb_auth_status: 'disconnected' });
-                }
-                throw new Error(`Blackbaud proxy error: ${response.status}`);
-            }
-    
-            const data = await response.json();
-            sendResponse({ success: true, data: data.data || data });
+            const data = await this.requestBlackbaudData(request);
+            sendResponse({ success: true, data });
         } catch (error) {
             console.error('Blackbaud request failed:', error.message);
-            sendResponse({ success: false, error: error.message });
+            sendResponse({
+                success: false,
+                error: error.message,
+                needsReconnect: error.needsReconnect === true
+            });
         }
     }
 
@@ -1674,6 +1691,19 @@ class CanvasAIBackground {
             end_date: range.endDate
         });
         return `/school/v1/calendars/events?${params.toString()}`;
+    }
+
+    async fetchBlackbaudCalendarData(startDate, endDate) {
+        const range = this.getBlackbaudCalendarDateRange(startDate, endDate);
+        const rawData = await this.requestBlackbaudData({
+            endpoint: this.buildBlackbaudCalendarEndpoint(range.startDate, range.endDate)
+        });
+
+        return {
+            events: Array.isArray(rawData?.value) ? rawData.value : (Array.isArray(rawData) ? rawData : []),
+            startDate: range.startDate,
+            endDate: range.endDate
+        };
     }
 
     // Simplified helper - just stores locally for backup/debugging
@@ -3321,13 +3351,11 @@ class CanvasAIBackground {
             }
 
             if (toolName === 'get_blackbaud_calendar') {
-                const events = Array.isArray(toolResult?.value)
-                    ? toolResult.value
-                    : (Array.isArray(toolResult) ? toolResult : []);
+                const events = Array.isArray(toolResult?.events) ? toolResult.events : [];
 
                 if (events.length === 0) return "No Blackbaud calendar events found for that date range.";
 
-                let text = `📅 **Blackbaud Calendar Events** (${events.length}):\n\n`;
+                let text = `📅 **Blackbaud Calendar Events** (${toolResult.startDate} → ${toolResult.endDate})\n\n`;
                 events.slice(0, 10).forEach(event => {
                     const title = event.title || event.name || 'Untitled Event';
                     const start = event.start_date || event.start;
@@ -3492,10 +3520,7 @@ class CanvasAIBackground {
             }
 
             case 'get_blackbaud_calendar':
-                return await this._promisifyHandler(
-                    (req, sr) => this.handleBlackbaudRequest(req, sr),
-                    [{ endpoint: this.buildBlackbaudCalendarEndpoint(args.start_date, args.end_date) }]
-                );
+                return await this.fetchBlackbaudCalendarData(args.start_date, args.end_date);
     
             case 'get_grades': {
                 const stored = await chrome.storage.local.get('canvasData');
