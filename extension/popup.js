@@ -498,9 +498,10 @@ class CanvasAIPopup {
             
             document.getElementById('courses-count').textContent = coursesCount;
             document.getElementById('assignments-count').textContent = assignmentsCount;
-            document.getElementById('avg-grade').textContent = grades.length > 0
+            const averageGrade = grades.length > 0
                 ? `${Math.round(grades.reduce((sum, grade) => sum + grade, 0) / grades.length)}%`
                 : '--';
+            document.getElementById('avg-grade').textContent = averageGrade;
             
         } catch (error) {
             console.error('Popup: Error updating stats:', error);

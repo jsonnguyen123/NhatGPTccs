@@ -15,7 +15,7 @@ const MIN_COURSE_MATCH_WORD_LENGTH = 4;
 // Base Tool Class
 class CanvasTool {
     constructor(toolConfig = {}) {
-        this.name = new.target?.name?.replace(/Tool$/, '') || 'BaseTool';
+        this.name = new.target?.name?.replace(/Tool$/, '') || 'Base';
         this.globalConfig = getAgentConfig();
         this.config = this.mergeConfig(toolConfig);
     }

@@ -1678,7 +1678,9 @@ class CanvasAIBackground {
         }
 
         // Accept reversed input ranges and normalize them into chronological order.
-        if (resolvedStart > resolvedEnd) {
+        const startTime = new Date(`${resolvedStart}T00:00:00`).getTime();
+        const endTime = new Date(`${resolvedEnd}T00:00:00`).getTime();
+        if (startTime > endTime) {
             [resolvedStart, resolvedEnd] = [resolvedEnd, resolvedStart];
         }
 
