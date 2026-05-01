@@ -56,6 +56,11 @@ input {
     box-shadow: var(--shadow-lg);
 }
 
+.briefing-card--featured {
+    background: rgba(31, 19, 53, 0.98);
+    border-left: 4px solid var(--accent-primary);
+}
+
 .dashboard-header {
     display: flex;
     justify-content: space-between;
@@ -141,9 +146,10 @@ h3 {
 
 .briefing-summary {
     margin-top: 16px;
-    font-size: 16px;
+    font-size: 18px;
     line-height: 1.7;
     color: var(--text-primary);
+    font-weight: 500;
 }
 
 .trend-grid {
@@ -265,8 +271,17 @@ h3 {
     margin: 20px 0;
 }
 
+.simulator-display-row {
+    padding-top: 8px;
+}
+
 .overall-grade-card {
     min-width: 200px;
+}
+
+.overall-grade-card--primary {
+    background: linear-gradient(135deg, rgba(124, 77, 255, 0.2), rgba(214, 110, 255, 0.12));
+    border-color: rgba(179, 136, 255, 0.35);
 }
 
 .overall-grade-card strong {
@@ -274,6 +289,12 @@ h3 {
     font-size: 28px;
     margin-top: 4px;
     display: block;
+}
+
+.overall-grade-card--primary strong {
+    color: var(--accent-primary-light);
+    font-size: 40px;
+    line-height: 1;
 }
 
 .course-selector {
@@ -347,6 +368,12 @@ h3 {
     padding: 18px;
     border-radius: var(--radius-md);
     background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 26px;
+}
+
+.target-card--top {
+    margin-top: 8px;
 }
 
 .compact-heading {
@@ -394,11 +421,13 @@ h3 {
 
 .activity-row button {
     border: none;
-    background: none;
-    color: var(--text-primary);
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    color: #fff;
     text-align: left;
-    padding: 0;
+    padding: 4px 12px;
     cursor: pointer;
+    border-radius: 6px;
+    font-weight: 600;
 }
 
 .activity-title {

@@ -21,7 +21,7 @@
         </header>
 
         <main class="dashboard-grid">
-            <section class="card briefing-card">
+            <section class="card briefing-card briefing-card--featured">
                 <div class="section-heading">
                     <div>
                         <p class="eyebrow">Task 5</p>
@@ -73,8 +73,27 @@
                     </div>
                 </div>
 
-                <div class="simulator-summary-row">
-                    <div class="overall-grade-card">
+                <div class="target-card target-card--top">
+                    <div class="section-heading compact-heading">
+                        <div>
+                            <p class="eyebrow">Target Grade Calculator</p>
+                            <h3>Choose a target</h3>
+                        </div>
+                    </div>
+                    <div class="target-button-group" id="target-button-group">
+                        <button class="target-button" data-target="93">A (93%)</button>
+                        <button class="target-button" data-target="90">A- (90%)</button>
+                        <button class="target-button" data-target="87">B+ (87%)</button>
+                        <button class="target-button" data-target="83">B (83%)</button>
+                        <button class="target-button" data-target="80">B- (80%)</button>
+                        <button class="target-button" data-target="77">C+ (77%)</button>
+                        <button class="target-button" data-target="73">C (73%)</button>
+                    </div>
+                    <p id="target-grade-output" class="target-grade-output">Select a target grade to calculate what you need on remaining work.</p>
+                </div>
+
+                <div class="simulator-summary-row simulator-display-row">
+                    <div class="overall-grade-card overall-grade-card--primary">
                         <span class="summary-label">Overall Grade</span>
                         <strong id="simulator-overall-grade">--</strong>
                     </div>
@@ -99,25 +118,6 @@
                         </thead>
                         <tbody id="simulator-table-body"></tbody>
                     </table>
-                </div>
-
-                <div class="target-card">
-                    <div class="section-heading compact-heading">
-                        <div>
-                            <p class="eyebrow">Target Grade Calculator</p>
-                            <h3>Choose a target</h3>
-                        </div>
-                    </div>
-                    <div class="target-button-group" id="target-button-group">
-                        <button class="target-button" data-target="93">A (93%)</button>
-                        <button class="target-button" data-target="90">A- (90%)</button>
-                        <button class="target-button" data-target="87">B+ (87%)</button>
-                        <button class="target-button" data-target="83">B (83%)</button>
-                        <button class="target-button" data-target="80">B- (80%)</button>
-                        <button class="target-button" data-target="77">C+ (77%)</button>
-                        <button class="target-button" data-target="73">C (73%)</button>
-                    </div>
-                    <p id="target-grade-output" class="target-grade-output">Select a target grade to calculate what you need on remaining work.</p>
                 </div>
             </section>
 
