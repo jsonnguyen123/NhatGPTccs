@@ -774,7 +774,7 @@ body {
 @media (max-width: 360px) {
     body {
         width: 320px;
-        height: 1100px;
+        height: 580px;
     }
 
     .action-buttons {
