@@ -3471,9 +3471,15 @@ class CanvasAIBackground {
 
         const lastEntry = recentHistory[recentHistory.length - 1];
         if (lastEntry && now - new Date(lastEntry.timestamp).getTime() < twelveHours) {
-            lastEntry.timestamp = new Date(now).toISOString();
-            lastEntry.courses = snapshotCourses;
-            await chrome.storage.local.set({ courseGradeHistory: recentHistory });
+            const updatedHistory = [
+                ...recentHistory.slice(0, -1),
+                {
+                    ...lastEntry,
+                    timestamp: new Date(now).toISOString(),
+                    courses: snapshotCourses
+                }
+            ];
+            await chrome.storage.local.set({ courseGradeHistory: updatedHistory });
             return;
         }
 

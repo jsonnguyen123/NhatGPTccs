@@ -755,6 +755,12 @@ function buildValidatedContents(conversationHistory, currentMessage) {
     return validated;
 }
 
+const ACADEMIC_BRIEFING_FORBIDDEN_PHRASES = [
+    'Great job',
+    "Don't forget",
+    "I'd be happy to help"
+];
+
 function buildAcademicBriefingPrompt(briefingContext) {
     return [
         'Generate a daily academic briefing using only the provided context.',
@@ -766,7 +772,7 @@ function buildAcademicBriefingPrompt(briefingContext) {
         '- Tone: direct, informative, zero filler.',
         '- No emojis.',
         '- No exclamation points.',
-        '- Do not say "Great job", "Don\'t forget", "I\'d be happy to help", or similar filler.',
+        `- Do not say ${ACADEMIC_BRIEFING_FORBIDDEN_PHRASES.map(phrase => `"${phrase}"`).join(', ')}, or similar filler.`,
         '- Keep the response to one concise paragraph.',
         '',
         `Context JSON:\n${JSON.stringify(briefingContext)}`

@@ -1,3 +1,7 @@
+const MAX_BINARY_SEARCH_ITERATIONS = 25;
+const SPARKLINE_VERTICAL_PADDING = 12;
+const SPARKLINE_OFFSET = 6;
+
 class AcademicDashboard {
     constructor() {
         this.canvasData = null;
@@ -133,7 +137,7 @@ class AcademicDashboard {
         const cards = courses.map(course => {
             const courseGrades = grades
                 .filter(grade => String(grade.courseId) === String(course.id) && Number.isFinite(Number(grade.percentage)))
-                .sort((firstGrade, secondGrade) => new Date(firstGrade.gradedAt || firstGrade.dueAt || 0) - new Date(secondGrade.gradedAt || secondGrade.dueAt || 0))
+                .sort((firstGrade, secondGrade) => this.getGradeSortTimestamp(firstGrade) - this.getGradeSortTimestamp(secondGrade))
                 .slice(-6);
 
             const values = courseGrades.map(grade => Number(grade.percentage));
@@ -441,7 +445,7 @@ class AcademicDashboard {
 
         let low = 0;
         let high = 100;
-        for (let iteration = 0; iteration < 25; iteration += 1) {
+        for (let iteration = 0; iteration < MAX_BINARY_SEARCH_ITERATIONS; iteration += 1) {
             const mid = (low + high) / 2;
             const projectedRows = rows.map(row => row.isPending
                 ? { ...row, earned: Number(row.possible) * (mid / 100) }
@@ -558,7 +562,7 @@ class AcademicDashboard {
         const stepX = values.length === 1 ? width : width / (values.length - 1);
         const points = values.map((value, index) => {
             const x = index * stepX;
-            const y = height - (((value - min) / range) * (height - 12) + 6);
+            const y = height - (((value - min) / range) * (height - SPARKLINE_VERTICAL_PADDING) + SPARKLINE_OFFSET);
             return { x, y };
         });
         const line = points.map(point => `${point.x},${point.y}`).join(' ');
@@ -579,6 +583,13 @@ class AcademicDashboard {
             month: 'short',
             day: 'numeric'
         });
+    }
+
+    getGradeSortTimestamp(grade) {
+        const timestamp = grade?.gradedAt || grade?.dueAt;
+        if (!timestamp) return Number.MAX_SAFE_INTEGER;
+        const parsed = new Date(timestamp).getTime();
+        return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
     }
 
     formatRelativeTime(value) {
