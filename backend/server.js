@@ -755,6 +755,24 @@ function buildValidatedContents(conversationHistory, currentMessage) {
     return validated;
 }
 
+function buildAcademicBriefingPrompt(briefingContext) {
+    return [
+        'Generate a daily academic briefing using only the provided context.',
+        'Response requirements:',
+        '- Lead with the single most urgent action item.',
+        '- Mention grade changes from the past 7 days when present.',
+        '- Reference calendar events that reduce study time when present.',
+        '- Mention unread school email only when relevant.',
+        '- Tone: direct, informative, zero filler.',
+        '- No emojis.',
+        '- No exclamation points.',
+        '- Do not say "Great job", "Don\'t forget", "I\'d be happy to help", or similar filler.',
+        '- Keep the response to one concise paragraph.',
+        '',
+        `Context JSON:\n${JSON.stringify(briefingContext)}`
+    ].join('\n');
+}
+
 // ═══════════════════════════════════════════════════════════════
 // In-memory storage
 // ═══════════════════════════════════════════════════════════════
@@ -1081,6 +1099,63 @@ app.post('/api/ai/chat', validateCanvasTokenCached, async (req, res) => {
     } catch (error) {
         logger.error('AI chat error:', error);
         res.status(500).json({ success: false, error: 'AI processing failed' });
+    }
+});
+
+app.post('/api/ai/briefing', validateCanvasTokenCached, async (req, res) => {
+    try {
+        const { briefingContext, canvasData } = req.body;
+        if (!briefingContext || typeof briefingContext !== 'object') {
+            return res.status(400).json({ success: false, error: 'briefingContext is required' });
+        }
+
+        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+        if (!GEMINI_API_KEY) {
+            return res.status(500).json({ success: false, error: 'Gemini API key not configured' });
+        }
+
+        const systemInstruction = `${buildSystemInstruction(canvasData)}\n\nYou are generating a top-level academic dashboard briefing. Use only the supplied context. Do not call tools. Do not mention missing data unless it changes the advice.`;
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+        const response = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                system_instruction: { parts: [{ text: systemInstruction }] },
+                contents: [{
+                    role: 'user',
+                    parts: [{ text: buildAcademicBriefingPrompt(briefingContext) }]
+                }],
+                safety_settings: [
+                    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+                    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+                    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_LOW_AND_ABOVE' },
+                    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' }
+                ],
+                generation_config: {
+                    temperature: 0.3,
+                    max_output_tokens: 512,
+                    top_p: 0.8
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            logger.error('Academic briefing Gemini error:', { status: response.status, body: errText.substring(0, 500) });
+            return res.status(502).json({ success: false, error: `Gemini API error: ${response.status}` });
+        }
+
+        const geminiData = await response.json();
+        const textPart = geminiData.candidates?.[0]?.content?.parts?.find(part => part.text);
+        if (!textPart?.text) {
+            return res.status(502).json({ success: false, error: 'No academic briefing text returned' });
+        }
+
+        return res.json({ success: true, summary: textPart.text.trim() });
+    } catch (error) {
+        logger.error('Academic briefing error:', error);
+        return res.status(500).json({ success: false, error: 'Academic briefing failed' });
     }
 });
 

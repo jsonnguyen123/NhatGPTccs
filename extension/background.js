@@ -1379,6 +1379,14 @@ class CanvasAIBackground {
                     }
                     break;
 
+                case 'GET_ACADEMIC_BRIEFING':
+                    await this.handleGetAcademicBriefing(sendResponse);
+                    break;
+
+                case 'GET_COURSE_SIMULATOR_DATA':
+                    await this.handleGetCourseSimulatorData(request, sendResponse);
+                    break;
+
                 default:
                     console.warn('Canvas AI Assistant: Unknown message type:', request.type);
                     sendResponse({ success: false, error: 'Unknown message type' });
@@ -2945,7 +2953,8 @@ class CanvasAIBackground {
     
             // ── FINALIZE ──
             await this.updateSyncProgress(98, 'Finalizing...');
-    
+            await this.recordCourseGradeHistory(canvasData.courses);
+     
             await chrome.storage.local.set({
                 canvasData: canvasData,
                 lastUpdate: new Date().toISOString(),
@@ -3076,6 +3085,404 @@ class CanvasAIBackground {
                 error: error.message
             });
         }
+    }
+
+    async handleGetAcademicBriefing(sendResponse) {
+        try {
+            const stored = await chrome.storage.local.get([
+                'canvasData',
+                'lastUpdate',
+                'courseGradeHistory'
+            ]);
+            const canvasData = stored.canvasData || {
+                user: null,
+                courses: [],
+                assignments: [],
+                assignmentGrades: [],
+                announcements: [],
+                calendarEvents: []
+            };
+
+            const [blackbaudCalendar, emailResult] = await Promise.all([
+                this.fetchBlackbaudCalendarData().catch(error => ({
+                    events: [],
+                    startDate: null,
+                    endDate: null,
+                    error: error.message,
+                    needsReconnect: error.needsReconnect === true
+                })),
+                this.gmailService.isConnected()
+                    .then(connected => connected
+                        ? this.gmailService.fetchSchoolEmails({
+                            maxResults: 12,
+                            daysBack: 7,
+                            senderDomains: ['christchurchschool.org']
+                        }, false)
+                        : { success: true, emails: [], connected: false }
+                    )
+                    .catch(error => ({
+                        success: false,
+                        emails: [],
+                        connected: false,
+                        error: error.message
+                    }))
+            ]);
+
+            const briefingContext = this.buildAcademicBriefingContext(
+                canvasData,
+                blackbaudCalendar,
+                emailResult,
+                stored.courseGradeHistory || [],
+                stored.lastUpdate || null
+            );
+
+            const summary = await this.generateAcademicBriefingNarrative(briefingContext, canvasData)
+                .catch(() => this.buildAcademicBriefingFallback(briefingContext));
+
+            sendResponse({
+                success: true,
+                data: {
+                    summary: this.normalizeAcademicBriefingText(summary),
+                    context: briefingContext
+                }
+            });
+        } catch (error) {
+            console.error('Background: GET_ACADEMIC_BRIEFING failed:', error);
+            sendResponse({ success: false, error: error.message });
+        }
+    }
+
+    async handleGetCourseSimulatorData(request, sendResponse) {
+        try {
+            const courseId = String(request.courseId || '').trim();
+            if (!/^\d+$/.test(courseId)) {
+                sendResponse({ success: false, error: 'A valid courseId is required.' });
+                return;
+            }
+
+            const stored = await chrome.storage.local.get(['canvasData']);
+            const canvasData = stored.canvasData || {};
+            const course = (canvasData.courses || []).find(item => String(item.id) === courseId);
+            if (!course) {
+                sendResponse({ success: false, error: 'Course not found in cached data.' });
+                return;
+            }
+
+            const assignmentGroups = await this.makeCanvasRequest(`/courses/${courseId}/assignment_groups`, {
+                include: ['assignments'],
+                per_page: 100
+            });
+
+            const gradeMap = new Map(
+                (canvasData.assignmentGrades || [])
+                    .filter(grade => String(grade.courseId) === courseId)
+                    .map(grade => [String(grade.assignmentId), grade])
+            );
+
+            const rows = [];
+            assignmentGroups.forEach(group => {
+                const assignments = Array.isArray(group.assignments) ? group.assignments : [];
+                assignments.forEach(assignment => {
+                    const grade = gradeMap.get(String(assignment.id));
+                    const pointsPossible = Number(assignment.points_possible);
+                    const earned = grade?.score != null ? Number(grade.score) : null;
+                    const dueDate = assignment.due_at || grade?.dueAt || null;
+                    rows.push({
+                        assignmentId: String(assignment.id),
+                        title: assignment.name || 'Untitled Assignment',
+                        category: group.name || 'Uncategorized',
+                        categoryId: String(group.id),
+                        categoryWeight: Number(group.group_weight || 0),
+                        earned,
+                        actualEarned: earned,
+                        possible: Number.isFinite(pointsPossible) ? pointsPossible : 0,
+                        gradePercent: earned != null && Number.isFinite(pointsPossible) && pointsPossible > 0
+                            ? (earned / pointsPossible) * 100
+                            : null,
+                        dueDate,
+                        htmlUrl: assignment.html_url || null,
+                        status: grade?.workflowState || assignment.workflow_state || 'pending',
+                        isPending: earned == null,
+                        isFuture: dueDate ? new Date(dueDate) > new Date() : false
+                    });
+                });
+            });
+
+            const ungroupedAssignments = (canvasData.assignmentGrades || [])
+                .filter(grade => String(grade.courseId) === courseId)
+                .filter(grade => !rows.some(row => row.assignmentId === String(grade.assignmentId)));
+
+            ungroupedAssignments.forEach(grade => {
+                const pointsPossible = Number(grade.pointsPossible || 0);
+                const earned = grade.score != null ? Number(grade.score) : null;
+                rows.push({
+                    assignmentId: String(grade.assignmentId),
+                    title: grade.assignmentName || 'Untitled Assignment',
+                    category: 'Other',
+                    categoryId: 'other',
+                    categoryWeight: 0,
+                    earned,
+                    actualEarned: earned,
+                    possible: Number.isFinite(pointsPossible) ? pointsPossible : 0,
+                    gradePercent: earned != null && pointsPossible > 0 ? (earned / pointsPossible) * 100 : null,
+                    dueDate: grade.dueAt || null,
+                    htmlUrl: null,
+                    status: grade.workflowState || 'graded',
+                    isPending: earned == null,
+                    isFuture: grade.dueAt ? new Date(grade.dueAt) > new Date() : false
+                });
+            });
+
+            const sortedRows = rows.sort((firstRow, secondRow) => {
+                const firstTime = firstRow.dueDate ? new Date(firstRow.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+                const secondTime = secondRow.dueDate ? new Date(secondRow.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+                return firstTime - secondTime;
+            });
+
+            sendResponse({
+                success: true,
+                data: {
+                    course: {
+                        id: course.id,
+                        name: course.name,
+                        grade: course.grade,
+                        letterGrade: course.letterGrade
+                    },
+                    rows: sortedRows,
+                    weightingMode: assignmentGroups.some(group => Number(group.group_weight || 0) > 0) ? 'weighted' : 'points'
+                }
+            });
+        } catch (error) {
+            console.error('Background: GET_COURSE_SIMULATOR_DATA failed:', error);
+            sendResponse({ success: false, error: error.message });
+        }
+    }
+
+    buildAcademicBriefingContext(canvasData, blackbaudCalendar, emailResult, courseGradeHistory, lastUpdate) {
+        const prioritizedAssignments = [...(canvasData.assignments || [])]
+            .map(assignment => ({
+                ...assignment,
+                priorityScore: this.computeAssignmentPriorityScore(assignment, canvasData.courses || [])
+            }))
+            .sort((firstAssignment, secondAssignment) => secondAssignment.priorityScore - firstAssignment.priorityScore)
+            .slice(0, 8);
+
+        const gradeChanges = this.computeCourseGradeChanges(canvasData.courses || [], courseGradeHistory || []);
+        const upcomingCalendarEvents = [...(blackbaudCalendar?.events || [])]
+            .map(event => ({
+                title: event.title || event.name || 'Untitled Event',
+                start: event.start_date || event.start || null,
+                location: event.location || event.location_name || '',
+                description: event.description || ''
+            }))
+            .filter(event => event.start && new Date(event.start) >= new Date())
+            .sort((firstEvent, secondEvent) => new Date(firstEvent.start) - new Date(secondEvent.start))
+            .slice(0, 6);
+
+        const unreadEmails = (emailResult?.emails || [])
+            .filter(email => Array.isArray(email.labelIds) && email.labelIds.includes('UNREAD'))
+            .slice(0, 6)
+            .map(email => ({
+                id: email.id,
+                subject: email.subject || '(No subject)',
+                from: email.from || 'Unknown sender',
+                date: email.date || '',
+                snippet: email.snippet || ''
+            }));
+
+        return {
+            generatedAt: new Date().toISOString(),
+            lastUpdate,
+            student: canvasData.user || null,
+            courses: (canvasData.courses || []).map(course => ({
+                id: course.id,
+                name: course.name,
+                grade: course.grade,
+                letterGrade: course.letterGrade
+            })),
+            prioritizedAssignments: prioritizedAssignments.map(assignment => ({
+                id: assignment.id,
+                title: assignment.title,
+                courseName: assignment.courseName,
+                dueDate: assignment.dueDate,
+                points: assignment.points,
+                priorityScore: assignment.priorityScore
+            })),
+            gradeChanges,
+            calendarEvents: upcomingCalendarEvents,
+            unreadEmails,
+            emailConnected: emailResult?.connected !== false && !emailResult?.needsReconnect
+        };
+    }
+
+    computeAssignmentPriorityScore(assignment, courses = []) {
+        const dueTime = assignment?.dueDate ? new Date(assignment.dueDate).getTime() : null;
+        const now = Date.now();
+        const daysUntilDue = dueTime == null ? 999 : Math.ceil((dueTime - now) / (1000 * 60 * 60 * 24));
+        const points = Number(assignment?.points || 0);
+        const matchingCourse = courses.find(course => String(course.id) === String(assignment.courseId));
+        const currentGrade = Number(matchingCourse?.grade);
+
+        let score = 10;
+        if (daysUntilDue < 0) score += 60;
+        else if (daysUntilDue === 0) score += 50;
+        else if (daysUntilDue === 1) score += 40;
+        else if (daysUntilDue <= 3) score += 28;
+        else if (daysUntilDue <= 7) score += 15;
+
+        if (points >= 100) score += 20;
+        else if (points >= 50) score += 12;
+        else if (points >= 20) score += 6;
+
+        if (Number.isFinite(currentGrade) && currentGrade < 80) score += 10;
+        else if (Number.isFinite(currentGrade) && currentGrade < 90) score += 5;
+
+        return score;
+    }
+
+    computeCourseGradeChanges(courses, courseGradeHistory) {
+        if (!Array.isArray(courses) || courses.length === 0) return [];
+
+        const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+        const historicalEntry = [...(courseGradeHistory || [])]
+            .filter(entry => entry?.timestamp && new Date(entry.timestamp).getTime() <= sevenDaysAgo)
+            .sort((firstEntry, secondEntry) => new Date(secondEntry.timestamp) - new Date(firstEntry.timestamp))[0];
+
+        const historicalMap = new Map(
+            (historicalEntry?.courses || []).map(course => [String(course.courseId), Number(course.grade)])
+        );
+
+        return courses
+            .map(course => {
+                const currentGrade = Number(course.grade);
+                if (!Number.isFinite(currentGrade)) return null;
+
+                const previousGrade = historicalMap.get(String(course.id));
+                const delta = Number.isFinite(previousGrade)
+                    ? Number((currentGrade - previousGrade).toFixed(1))
+                    : null;
+
+                return {
+                    courseId: String(course.id),
+                    courseName: course.name,
+                    currentGrade,
+                    previousGrade: Number.isFinite(previousGrade) ? previousGrade : null,
+                    delta
+                };
+            })
+            .filter(Boolean);
+    }
+
+    async generateAcademicBriefingNarrative(briefingContext, canvasData) {
+        const canvasToken = await this.getCanvasToken();
+        if (!canvasToken) {
+            return this.buildAcademicBriefingFallback(briefingContext);
+        }
+
+        const response = await fetch(`${this.apiEndpoint}/ai/briefing`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${canvasToken}`
+            },
+            body: JSON.stringify({
+                briefingContext,
+                canvasData
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Academic briefing request failed: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (!result.success || !result.summary) {
+            throw new Error(result.error || 'Academic briefing unavailable');
+        }
+
+        return result.summary;
+    }
+
+    normalizeAcademicBriefingText(text) {
+        return String(text || '')
+            .replace(/\p{Extended_Pictographic}/gu, '')
+            .replace(/!/g, '.')
+            .replace(/\b(Great job|Don['’]t forget|I'd be happy to help|I would be happy to help)\b/gi, '')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+    }
+
+    buildAcademicBriefingFallback(briefingContext) {
+        const lines = [];
+        const topAssignment = briefingContext.prioritizedAssignments[0];
+        if (topAssignment) {
+            const dueLabel = topAssignment.dueDate
+                ? new Date(topAssignment.dueDate).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
+                : 'soon';
+            lines.push(`${topAssignment.title} for ${topAssignment.courseName || 'class'} is the most urgent task and is due ${dueLabel}.`);
+        }
+
+        const changedCourse = briefingContext.gradeChanges
+            .filter(change => change.delta != null && Math.abs(change.delta) >= 0.5)
+            .sort((firstChange, secondChange) => Math.abs(secondChange.delta) - Math.abs(firstChange.delta))[0];
+        if (changedCourse) {
+            const direction = changedCourse.delta > 0 ? 'up' : 'down';
+            lines.push(`${changedCourse.courseName} is ${direction} ${Math.abs(changedCourse.delta)} points over the last 7 days and is currently ${Math.round(changedCourse.currentGrade)}%.`);
+        }
+
+        if (briefingContext.calendarEvents.length > 0) {
+            const event = briefingContext.calendarEvents[0];
+            const when = new Date(event.start).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+            lines.push(`${event.title} is on ${when}${event.location ? ` at ${event.location}` : ''} and may affect study time.`);
+        }
+
+        if (briefingContext.unreadEmails.length > 0) {
+            lines.push(`You have ${briefingContext.unreadEmails.length} unread school email${briefingContext.unreadEmails.length === 1 ? '' : 's'} to review.`);
+        }
+
+        if (lines.length === 0) {
+            return 'No urgent academic changes were found in the latest synced data. Use today to make progress on upcoming coursework.';
+        }
+
+        return lines.join(' ');
+    }
+
+    async recordCourseGradeHistory(courses = []) {
+        const snapshotCourses = (courses || [])
+            .map(course => ({
+                courseId: String(course.id),
+                name: course.name,
+                grade: Number(course.grade)
+            }))
+            .filter(course => Number.isFinite(course.grade));
+
+        if (snapshotCourses.length === 0) {
+            return;
+        }
+
+        const stored = await chrome.storage.local.get(['courseGradeHistory']);
+        const history = Array.isArray(stored.courseGradeHistory) ? stored.courseGradeHistory : [];
+        const now = Date.now();
+        const twelveHours = 12 * 60 * 60 * 1000;
+        const recentHistory = history.filter(entry => {
+            const timestamp = new Date(entry.timestamp || 0).getTime();
+            return now - timestamp < 30 * 24 * 60 * 60 * 1000;
+        });
+
+        const lastEntry = recentHistory[recentHistory.length - 1];
+        if (lastEntry && now - new Date(lastEntry.timestamp).getTime() < twelveHours) {
+            lastEntry.timestamp = new Date(now).toISOString();
+            lastEntry.courses = snapshotCourses;
+            await chrome.storage.local.set({ courseGradeHistory: recentHistory });
+            return;
+        }
+
+        recentHistory.push({
+            timestamp: new Date(now).toISOString(),
+            courses: snapshotCourses
+        });
+
+        await chrome.storage.local.set({ courseGradeHistory: recentHistory });
     }
 
     async refreshCanvasDataAPI(tab, sendResponse) {
