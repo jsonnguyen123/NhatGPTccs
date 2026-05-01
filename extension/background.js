@@ -2954,7 +2954,7 @@ class CanvasAIBackground {
             // ── FINALIZE ──
             await this.updateSyncProgress(98, 'Finalizing...');
             await this.recordCourseGradeHistory(canvasData.courses);
-     
+
             await chrome.storage.local.set({
                 canvasData: canvasData,
                 lastUpdate: new Date().toISOString(),
