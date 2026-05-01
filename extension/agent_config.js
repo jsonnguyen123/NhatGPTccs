@@ -17,6 +17,12 @@ const AGENT_CONFIG = {
             searchWindowDays: 14 // How far ahead to look
         },
 
+        blackbaudCalendar: {
+            systemPrompt: "You help students review their Blackbaud school calendar and highlight upcoming events, date ranges, and logistics.",
+            fallbackResponse: "I couldn't fetch your Blackbaud calendar right now.",
+            maxItemsToShow: 10
+        },
+
         // Config for "CourseNavigator" (Specific Course/Grade queries)
         courseNavigator: {
             systemPrompt: "You are a course assistant. When answering about syllabus or grades, be precise. Use the provided context context heavily.",
@@ -52,6 +58,11 @@ const AGENT_CONFIG = {
             systemPrompt: "You list all courses the student is enrolled in, including grades and term information.",
             fallbackResponse: "I couldn't find your course list. Please sync your Canvas data.",
             maxItemsToShow: 50
+        },
+
+        assignmentDetail: {
+            systemPrompt: "You help students inspect a specific assignment's instructions, rubric, submission requirements, due date, and current submission status.",
+            fallbackResponse: "I couldn't find the assignment details for that request."
         },
         
         // 📧 NEW: Gmail Email Tool Config
@@ -92,12 +103,13 @@ const AGENT_CONFIG = {
     // ═══════════════════════════════════════════════════════════════
     geminiToolMap: {
         'get_assignments':      'globalPlanner',
+        'get_blackbaud_calendar': 'blackbaudCalendar',
         'get_grades':           'gradeAnalyzer',
         'get_dining_menu':      'diningMenu',
         'get_announcements':    'announcementReader',
         'get_course_list':      'courseLister',
         'get_syllabus':         'syllabusReader',
-        'get_assignment_detail': 'courseNavigator',
+        'get_assignment_detail': 'assignmentDetail',
         'get_emails':           'gmailEmail',
         'web_search':           null  // Handled server-side, no local config needed
     },
@@ -114,6 +126,10 @@ const AGENT_CONFIG = {
             'deadlines', 'submit', 'submission', 'task', 'tasks', 'upcoming',
             'overdue', 'late', 'missing work', 'what do i have to do',
             'whats due', "what's due", 'do i have hw', 'do i have homework'
+        ],
+        'get_blackbaud_calendar': [
+            'blackbaud', 'school calendar', 'school event', 'school events',
+            'campus calendar', 'bb calendar', 'blackbaud calendar'
         ],
         'get_grades': [
             'grade', 'grades', 'score', 'scores', 'gpa', 'average',

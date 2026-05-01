@@ -82,9 +82,11 @@ class CanvasAIPopup {
         // Disable main features
         const openChatbotBtn = document.getElementById('open-chatbot');
         const refreshDataBtn = document.getElementById('refresh-data');
+        const dashboardBtn = document.getElementById('open-dashboard');
         
         if (openChatbotBtn) openChatbotBtn.disabled = true;
         if (refreshDataBtn) refreshDataBtn.disabled = true;
+        if (dashboardBtn) dashboardBtn.disabled = true;
         
         chrome.tabs.create({
             url: chrome.runtime.getURL('welcome.html')
@@ -131,6 +133,14 @@ class CanvasAIPopup {
                 });
             } else {
                 console.error('Settings button not found!');
+            }
+
+            const dashboardBtn = document.getElementById('open-dashboard');
+            if (dashboardBtn) {
+                dashboardBtn.addEventListener('click', () => {
+                    console.log('Dashboard button clicked');
+                    this.openDashboard();
+                });
             }
 
             // Help link
@@ -321,23 +331,8 @@ class CanvasAIPopup {
             const data = result.canvasData;
 
             if (data) {
-                // Update stats
-                const coursesCount = document.getElementById('courses-count');
-                const assignmentsCount = document.getElementById('assignments-count');
-                const avgGrade = document.getElementById('avg-grade');
-
-                if (coursesCount) coursesCount.textContent = data.courses?.length || 0;
-                if (assignmentsCount) assignmentsCount.textContent = data.assignments?.length || 0;
-                
-                if (avgGrade && data.courses?.length > 0) {
-                    const grades = data.courses
-                        .map(c => c.grade)
-                        .filter(g => g != null && !isNaN(g));
-                    if (grades.length > 0) {
-                        const avg = Math.round(grades.reduce((a, b) => a + b, 0) / grades.length);
-                        avgGrade.textContent = `${avg}%`;
-                    }
-                }
+                this.canvasData = data;
+                this.updateDataDisplay();
 
                 // Update data status
                 const dataStatus = document.getElementById('data-status');
@@ -354,9 +349,6 @@ class CanvasAIPopup {
                     }
                     dataStatus.className = 'status-value success';
                 }
-
-                // Update activity list
-                this.updateActivityList(data);
             } else {
                 const dataStatus = document.getElementById('data-status');
                 if (dataStatus) {
@@ -490,130 +482,11 @@ class CanvasAIPopup {
 
     updateDataDisplay() {
         console.log('Popup: Updating data display');
-        
-        if (!this.canvasData) {
-            this.showNoDataMessage();
-            return;
-        }
-
-        // Update stats
-        this.updateStats();
-        
-        // Update activity list
-        this.updateActivityList();
-    }
-
-    updateStats() {
-        try {
-            const coursesCount = this.canvasData.courses ? this.canvasData.courses.length : 0;
-            const assignmentsCount = this.canvasData.assignments ? 
-                this.canvasData.assignments.filter(a => a.dueDate && new Date(a.dueDate) > new Date()).length : 0;
-            
-            document.getElementById('courses-count').textContent = coursesCount;
-            document.getElementById('assignments-count').textContent = assignmentsCount;
-            
-            // For demo, show placeholder grade
-            document.getElementById('avg-grade').textContent = '--';
-            
-        } catch (error) {
-            console.error('Popup: Error updating stats:', error);
-        }
-    }
-
-    updateActivityList() {
-        const activityList = document.getElementById('activity-list');
-        if (!activityList) {
-            console.error('Activity list element not found!');
-            return;
-        }
-
-        if (!this.canvasData || !this.canvasData.assignments || this.canvasData.assignments.length === 0) {
-            this.showNoDataMessage();
-            return;
-        }
-
-        try {
-            // Get upcoming assignments
-            const upcomingAssignments = this.canvasData.assignments
-                .filter(a => a.dueDate && new Date(a.dueDate) > new Date())
-                .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
-                .slice(0, 3);
-
-            if (upcomingAssignments.length === 0) {
-                this.showNoDataMessage();
-                return;
-            }
-
-            activityList.innerHTML = '';
-
-            upcomingAssignments.forEach(assignment => {
-                const activityItem = document.createElement('div');
-                activityItem.className = 'activity-item';
-                
-                // Make clickable if URL exists
-                if (assignment.url) {
-                    activityItem.classList.add('clickable');
-                    activityItem.dataset.url = assignment.url;
-                    activityItem.title = `Click to open: ${assignment.title}`;
-                }
-                
-                const dueDate = new Date(assignment.dueDate);
-                const daysUntilDue = Math.ceil((dueDate - new Date()) / (1000 * 60 * 60 * 24));
-                
-                let icon = '📝';
-                let urgencyClass = '';
-                
-                if (daysUntilDue <= 1) {
-                    icon = '🔥';
-                    urgencyClass = 'urgent';
-                } else if (daysUntilDue <= 3) {
-                    icon = '⏰';
-                    urgencyClass = 'soon';
-                }
-
-                activityItem.innerHTML = `
-                    <span class="activity-icon">${icon}</span>
-                    <div class="activity-content">
-                        <div class="activity-title ${urgencyClass}">${this.truncateText(assignment.title, 30)}</div>
-                        <div class="activity-subtitle">${assignment.courseName || 'Unknown Course'}</div>
-                        <div class="activity-due">${this.formatDueDate(dueDate)}</div>
-                    </div>
-                    <div class="activity-meta">
-                        <span class="days-badge ${urgencyClass}">${daysUntilDue > 0 ? `${daysUntilDue}d` : 'Today'}</span>
-                        ${assignment.url ? '<span class="activity-arrow">→</span>' : ''}
-                    </div>
-                `;
-
-                // Add click handler to open assignment in new tab
-                if (assignment.url) {
-                    activityItem.addEventListener('click', () => {
-                        console.log('Popup: Opening assignment:', assignment.title, assignment.url);
-                        chrome.tabs.create({ url: assignment.url });
-                    });
-                }
-
-                activityList.appendChild(activityItem);
-            });
-            
-        } catch (error) {
-            console.error('Popup: Error updating activity list:', error);
-            this.showNoDataMessage();
-        }
+        return Boolean(this.canvasData);
     }
 
     showNoDataMessage() {
-        const activityList = document.getElementById('activity-list');
-        if (activityList) {
-            activityList.innerHTML = `
-                <div class="activity-item placeholder">
-                    <span class="activity-icon">📚</span>
-                    <div class="activity-content">
-                        <div class="activity-title">No recent activity</div>
-                        <div class="activity-subtitle">Visit Canvas to see your assignments</div>
-                    </div>
-                </div>
-            `;
-        }
+        return null;
     }
 
     truncateText(text, maxLength) {
@@ -692,42 +565,17 @@ class CanvasAIPopup {
         }
     }
 
-    async refreshData() {
-        console.log('Popup: Refreshing data...');
-        
-        if (!this.currentTab || !this.currentTab.url.includes('instructure.com')) {
-            this.showError('Please open Canvas to refresh data');
-            return;
-        }
-
-        this.showLoading('Refreshing Canvas data...');
-
-        try {
-            const response = await chrome.runtime.sendMessage({
-                type: 'REFRESH_CANVAS_DATA',
-                tab: this.currentTab
-            });
-
-            console.log('Popup: Refresh data response:', response);
-
-            if (response && response.success) {
-                this.canvasData = response.data;
-                this.updateDataDisplay();
-                this.showSuccess('Data refreshed successfully');
-            } else {
-                this.showError('Failed to refresh data: ' + (response?.error || 'Unknown error'));
-            }
-        } catch (error) {
-            console.error('Canvas AI Assistant: Error refreshing data:', error);
-            this.showError('Failed to refresh data: ' + error.message);
-        } finally {
-            this.hideLoading();
-        }
-    }
-
     openSettings() {
         console.log('Popup: Opening settings...');
         chrome.runtime.openOptionsPage();
+        window.close();
+    }
+
+    openDashboard() {
+        console.log('Popup: Opening dashboard...');
+        chrome.tabs.create({
+            url: chrome.runtime.getURL('dashboard.html')
+        });
         window.close();
     }
 
@@ -745,6 +593,7 @@ class CanvasAIPopup {
             // Update button states
             const openChatbotBtn = document.getElementById('open-chatbot');
             const refreshDataBtn = document.getElementById('refresh-data');
+            const dashboardBtn = document.getElementById('open-dashboard');
 
             if (openChatbotBtn) {
                  openChatbotBtn.disabled = false;
@@ -756,6 +605,11 @@ class CanvasAIPopup {
                 refreshDataBtn.disabled = false;
                 refreshDataBtn.style.opacity = '1';
                 refreshDataBtn.title = "Sync Canvas Data";
+            }
+
+            if (dashboardBtn) {
+                dashboardBtn.disabled = false;
+                dashboardBtn.style.opacity = '1';
             }
         } catch (error) {
             console.error('Popup: Error updating UI:', error);

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Dashboard</title>
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+    <div class="dashboard-shell">
+        <header class="dashboard-header card">
+            <div>
+                <p class="eyebrow">Academic Dashboard</p>
+                <h1 id="student-name">Student</h1>
+                <p class="header-meta"><span id="current-date"></span> • Last sync <span id="last-sync">Not synced</span></p>
+            </div>
+            <div class="header-actions">
+                <button id="refresh-briefing" class="secondary-button">Refresh Briefing</button>
+                <button id="open-settings" class="secondary-button">Settings</button>
+            </div>
+        </header>
+
+        <main class="dashboard-grid">
+            <section class="card briefing-card briefing-card--featured">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Task 5</p>
+                        <h2>Academic Briefing</h2>
+                    </div>
+                </div>
+                <p id="briefing-summary" class="briefing-summary">Loading your daily briefing.</p>
+            </section>
+
+            <section class="card chart-section">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Task 5</p>
+                        <h2>Grade Trends</h2>
+                    </div>
+                </div>
+                <div id="grade-trends" class="trend-grid"></div>
+            </section>
+
+            <section class="card chart-section">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Task 5</p>
+                        <h2>Weekly Workload</h2>
+                    </div>
+                </div>
+                <div id="workload-chart" class="workload-chart"></div>
+            </section>
+
+            <section class="card health-section">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Task 5</p>
+                        <h2>Course Health</h2>
+                    </div>
+                </div>
+                <div id="course-health-grid" class="course-health-grid"></div>
+            </section>
+
+            <section class="card simulator-section">
+                <div class="section-heading simulator-heading">
+                    <div>
+                        <p class="eyebrow">Task 4</p>
+                        <h2>Grade What-If Simulator</h2>
+                    </div>
+                    <div class="simulator-controls">
+                        <select id="course-selector" class="course-selector"></select>
+                        <button id="reset-simulator" class="secondary-button">Reset to Actual Grades</button>
+                    </div>
+                </div>
+
+                <div class="target-card target-card--top">
+                    <div class="section-heading compact-heading">
+                        <div>
+                            <p class="eyebrow">Target Grade Calculator</p>
+                            <h3>Choose a target</h3>
+                        </div>
+                    </div>
+                    <div class="target-button-group" id="target-button-group">
+                        <button class="target-button" data-target="93">A (93%)</button>
+                        <button class="target-button" data-target="90">A- (90%)</button>
+                        <button class="target-button" data-target="87">B+ (87%)</button>
+                        <button class="target-button" data-target="83">B (83%)</button>
+                        <button class="target-button" data-target="80">B- (80%)</button>
+                        <button class="target-button" data-target="77">C+ (77%)</button>
+                        <button class="target-button" data-target="73">C (73%)</button>
+                    </div>
+                    <p id="target-grade-output" class="target-grade-output">Select a target grade to calculate what you need on remaining work.</p>
+                </div>
+
+                <div class="simulator-summary-row simulator-display-row">
+                    <div class="overall-grade-card overall-grade-card--primary">
+                        <span class="summary-label">Overall Grade</span>
+                        <strong id="simulator-overall-grade">--</strong>
+                    </div>
+                    <div class="overall-grade-card">
+                        <span class="summary-label">Remaining Work</span>
+                        <strong id="remaining-work-summary">--</strong>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="grade-table">
+                        <thead>
+                            <tr>
+                                <th>Assignment</th>
+                                <th>Category</th>
+                                <th>Earned</th>
+                                <th>Possible</th>
+                                <th>Weight</th>
+                                <th>Grade %</th>
+                                <th>Contribution</th>
+                            </tr>
+                        </thead>
+                        <tbody id="simulator-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="card activity-section">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Task 6</p>
+                        <h2>Recent Activity</h2>
+                    </div>
+                </div>
+                <div id="recent-activity-list" class="recent-activity-list"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="theme-manager.js"></script>
+    <script src="canvas_tools.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>

@@ -10,18 +10,73 @@ function getAgentConfig() {
     };
 }
 
+const MIN_COURSE_MATCH_WORD_LENGTH = 4;
+
 // Base Tool Class
 class CanvasTool {
     constructor(toolConfig = {}) {
-        this.name = 'BaseTool';
+        this.name = new.target?.name?.replace(/Tool$/, '') || 'Base';
         this.globalConfig = getAgentConfig();
         this.config = this.mergeConfig(toolConfig);
     }
     
     mergeConfig(toolConfig) {
-        const toolName = this.name.toLowerCase().replace('tool', '');
-        const defaultConfig = this.globalConfig.toolPrompts?.[toolName] || {};
+        const defaultConfig = this.globalConfig.toolPrompts?.[this.getConfigKey()] || {};
         return { ...defaultConfig, ...toolConfig };
+    }
+
+    getConfigKey() {
+        const explicitConfigKeys = {
+            Announcement: 'announcementReader'
+        };
+
+        if (explicitConfigKeys[this.name]) {
+            return explicitConfigKeys[this.name];
+        }
+
+        return this.name.charAt(0).toLowerCase() + this.name.slice(1);
+    }
+
+    getCourseKeywords() {
+        return [
+            'physics', 'chemistry', 'biology', 'calculus', 'algebra',
+            'geometry', 'english', 'history', 'government', 'economics',
+            'spanish', 'french', 'latin', 'art', 'music', 'computer',
+            'forensics', 'humanities', 'composition', 'literature', 'math',
+            'science', 'psychology', 'sociology', 'religion', 'chapel'
+        ];
+    }
+
+    findCourse(message, canvasData) {
+        if (!canvasData?.courses) return null;
+
+        const lowerMsg = message.toLowerCase();
+
+        let match = canvasData.courses.find(c =>
+            c.subject && lowerMsg.includes(String(c.subject).toLowerCase())
+        );
+        if (match) return match;
+
+        for (const keyword of this.getCourseKeywords()) {
+            if (!lowerMsg.includes(keyword)) continue;
+
+            match = canvasData.courses.find(c =>
+                c.name && c.name.toLowerCase().includes(keyword)
+            );
+
+            if (match) return match;
+        }
+
+        match = canvasData.courses.find(c =>
+            c.name && lowerMsg.includes(c.name.toLowerCase())
+        );
+        if (match) return match;
+
+        return canvasData.courses.find(c => {
+            if (!c.name) return false;
+            const words = c.name.toLowerCase().split(/[\s\-]+/).filter(w => w.length >= MIN_COURSE_MATCH_WORD_LENGTH);
+            return words.some(word => lowerMsg.includes(word));
+        }) || null;
     }
 
     // --- 🛠️ SHARED LOGIC ---
@@ -130,6 +185,97 @@ class GlobalPlannerTool extends CanvasTool {
         const upcoming = events.filter(e => e.start && new Date(e.start) > new Date()).slice(0, 5);
         if (upcoming.length === 0) return "No calendar events found.";
         return "🗓 **Calendar Events:**\n" + upcoming.map(e => `• ${e.title} (${new Date(e.start).toLocaleDateString()})`).join('\n');
+    }
+}
+
+class BlackbaudCalendarTool extends CanvasTool {
+    constructor(toolConfig = {}) {
+        super(toolConfig);
+        this.name = 'BlackbaudCalendar';
+    }
+
+    async execute(message, canvasData, context = {}) {
+        try {
+            const response = await chrome.runtime.sendMessage({
+                type: 'FETCH_BLACKBAUD_CALENDAR',
+                startDate: context.startDate,
+                endDate: context.endDate
+            });
+
+            if (!response?.success) {
+                return this.formatError(response?.error, response?.needsReconnect);
+            }
+
+            const events = Array.isArray(response.data?.events) ? response.data.events : [];
+            const { startDate, endDate } = response.data;
+
+            if (events.length === 0) {
+                return `📅 No Blackbaud calendar events found from **${startDate}** to **${endDate}**.`;
+            }
+
+            return this.formatEvents(events, startDate, endDate);
+        } catch (error) {
+            console.error('📅 BlackbaudCalendarTool: Error:', error);
+            return this.formatError(error.message);
+        }
+    }
+
+    formatEvents(events, startDate, endDate) {
+        const visibleEvents = [...events]
+            .sort((a, b) => this.compareEventStartDates(a, b))
+            .slice(0, this.config.maxItemsToShow || 10);
+
+        let response = `📅 **Blackbaud Calendar Events** (${startDate} → ${endDate})\n\n`;
+
+        visibleEvents.forEach(event => {
+            const title = event.title || event.name || 'Untitled Event';
+            const start = event.start_date || event.start;
+            const location = event.location || event.location_name;
+            const dateLabel = start
+                ? new Date(start).toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric'
+                })
+                : 'Date unavailable';
+
+            response += `• **${title}** — ${dateLabel}`;
+            if (location) response += ` @ ${location}`;
+            response += '\n';
+        });
+
+        if (events.length > visibleEvents.length) {
+            response += `\n_...and ${events.length - visibleEvents.length} more events._`;
+        }
+
+        return response;
+    }
+
+    compareEventStartDates(firstEvent, secondEvent) {
+        const firstTime = this.getEventStartTime(firstEvent);
+        const secondTime = this.getEventStartTime(secondEvent);
+
+        if (firstTime == null && secondTime == null) return 0;
+        if (firstTime == null) return 1;
+        if (secondTime == null) return -1;
+
+        return firstTime - secondTime;
+    }
+
+    getEventStartTime(event) {
+        const startValue = event.start_date || event.start;
+        if (!startValue) return null;
+
+        const parsedTime = new Date(startValue).getTime();
+        return Number.isNaN(parsedTime) ? null : parsedTime;
+    }
+
+    formatError(errorMessage = '', needsReconnect = false) {
+        if (needsReconnect) {
+            return "📅 **Blackbaud Not Connected**\n\nConnect Blackbaud in Settings to view your school calendar events.";
+        }
+
+        return `📅 I couldn't fetch your Blackbaud calendar right now.${errorMessage ? `\n\n**Error:** ${errorMessage}` : ''}`;
     }
 }
 
@@ -321,53 +467,6 @@ class GradeAnalyzerTool extends CanvasTool {
         }
         
         return this.getGradeSummary(filteredGrades, canvasData, trimesterLabel);
-    }
-
-    findCourse(message, canvasData) {
-        if (!canvasData?.courses) return null;
-        const lowerMsg = message.toLowerCase();
-
-        // DEBUG: Log all courses and their subjects
-        console.log('📊 GradeAnalyzer: Looking for course matching:', lowerMsg);
-        canvasData.courses.forEach(c => {
-            console.log(`   - "${c.name}" → subject: "${c.subject}"`);
-        });
-        
-        // 1. First try subject match
-        let match = canvasData.courses.find(c => c.subject && lowerMsg.includes(c.subject));
-        
-        // 2. If no subject match, check if message contains keywords from course NAME
-        if (!match) {
-            match = canvasData.courses.find(c => {
-                if (!c.name) return false;
-                const courseName = c.name.toLowerCase();
-                
-                // Check common subject keywords that might be in the course name
-                const subjectKeywords = [
-                    'physics', 'chemistry', 'biology', 'calculus', 'algebra', 
-                    'geometry', 'english', 'history', 'government', 'economics',
-                    'spanish', 'french', 'latin', 'art', 'music', 'computer',
-                    'forensics', 'humanities', 'composition', 'literature'
-                ];
-                
-                for (const keyword of subjectKeywords) {
-                    // If user said "physics" AND course name contains "physics"
-                    if (lowerMsg.includes(keyword) && courseName.includes(keyword)) {
-                        return true;
-                    }
-                }
-                return false;
-            });
-        }
-        
-        // 3. Fallback: check if course name is directly mentioned
-        if (!match) {
-            match = canvasData.courses.find(c => 
-                c.name && lowerMsg.includes(c.name.toLowerCase())
-            );
-        }
-        
-        return match;
     }
 
     getCourseGrades(grades, course, trimesterLabel = '') {
@@ -677,45 +776,6 @@ class SyllabusReaderTool extends CanvasTool {
         
         // Default: provide a summary of the course
         return this.getSyllabusSummary(syllabus, course);
-    }
-
-    findCourse(message, canvasData) {
-        if (!canvasData?.courses) return null;
-        const lowerMsg = message.toLowerCase();
-        
-        // Check common subject keywords in message
-        const subjectKeywords = [
-            'physics', 'chemistry', 'biology', 'calculus', 'algebra', 
-            'geometry', 'english', 'history', 'government', 'economics',
-            'spanish', 'french', 'latin', 'art', 'music', 'computer',
-            'forensics', 'humanities', 'composition', 'literature', 'math',
-            'science', 'psychology', 'sociology'
-        ];
-        
-        // 1. First try matching subject keywords in course name
-        for (const keyword of subjectKeywords) {
-            if (lowerMsg.includes(keyword)) {
-                const match = canvasData.courses.find(c => 
-                    c.name && c.name.toLowerCase().includes(keyword)
-                );
-                if (match) return match;
-            }
-        }
-        
-        // 2. Try subject field match
-        let match = canvasData.courses.find(c => c.subject && lowerMsg.includes(c.subject));
-        if (match) return match;
-        
-        // 3. Try partial course name match
-        match = canvasData.courses.find(c => {
-            if (!c.name) return false;
-            const courseName = c.name.toLowerCase();
-            // Check if any significant word from course name is in message
-            const words = courseName.split(/[\s\-]+/).filter(w => w.length > 3);
-            return words.some(word => lowerMsg.includes(word));
-        });
-        
-        return match;
     }
 
     listAvailableSyllabi(syllabi, canvasData) {
@@ -1105,16 +1165,6 @@ class CourseNavigatorTool extends CanvasTool {
         }
 
         return `📚 **Syllabus for ${syllabusData.title}:**\n\n${syllabusData.body}`;
-    }
-
-    findCourse(message, canvasData) {
-        if (!canvasData?.courses) return null;
-        const lowerMsg = message.toLowerCase();
-        // 1. Subject match
-        let match = canvasData.courses.find(c => c.subject && lowerMsg.includes(c.subject));
-        // 2. Name match
-        if (!match) match = canvasData.courses.find(c => c.name && (c.name.toLowerCase().includes(lowerMsg) || lowerMsg.includes(c.name.toLowerCase())));
-        return match;
     }
 
     getAllGrades(canvasData) {
@@ -1691,41 +1741,6 @@ class AnnouncementTool extends CanvasTool {
         return response;
     }
 
-    findCourse(message, canvasData) {
-        if (!canvasData?.courses) return null;
-        const lowerMsg = message.toLowerCase();
-        
-        // 1. Subject match
-        let match = canvasData.courses.find(c => c.subject && lowerMsg.includes(c.subject));
-        
-        // 2. Keyword match in course name
-        if (!match) {
-            const subjectKeywords = [
-                'physics', 'chemistry', 'biology', 'calculus', 'algebra', 
-                'geometry', 'english', 'history', 'government', 'economics',
-                'spanish', 'french', 'latin', 'art', 'music', 'computer',
-                'forensics', 'humanities', 'composition', 'literature', 'math',
-                'religion', 'chapel'
-            ];
-            for (const keyword of subjectKeywords) {
-                if (lowerMsg.includes(keyword)) {
-                    match = canvasData.courses.find(c => 
-                        c.name && c.name.toLowerCase().includes(keyword)
-                    );
-                    if (match) break;
-                }
-            }
-        }
-        
-        // 3. Direct name match
-        if (!match) {
-            match = canvasData.courses.find(c => 
-                c.name && lowerMsg.includes(c.name.toLowerCase())
-            );
-        }
-        
-        return match;
-    }
 }
 
 // GMAIL EMAIL TOOL - For dedicated "check my email" / "read email" queries
@@ -2350,6 +2365,7 @@ class ToolManager {
     constructor(toolConfigs = {}) {
         this.tools = {
             globalPlanner: new GlobalPlannerTool(toolConfigs.globalPlanner),
+            blackbaudCalendar: new BlackbaudCalendarTool(toolConfigs.blackbaudCalendar),
             courseNavigator: new CourseNavigatorTool(toolConfigs.courseNavigator),
             announcementReader: new AnnouncementTool(toolConfigs.announcementReader),
             gmailEmail: new GmailEmailTool(toolConfigs.gmailEmail),

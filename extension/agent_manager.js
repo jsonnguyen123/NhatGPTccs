@@ -52,6 +52,11 @@ class CanvasAgentManager {
                 priority: 4
             },
             {
+                id: 'blackbaudCalendar',
+                keywords: ['blackbaud', 'blackbaud calendar', 'school calendar', 'school event', 'school events'],
+                priority: 4
+            },
+            {
                 id: 'announcementReader', 
                 keywords: ['news', 'announcement','announcements', 'update', 'bulletin', 'posted'],
                 priority: 3
@@ -130,20 +135,7 @@ class CanvasAgentManager {
      * @returns {object|string} Raw tool result (NOT synthesized — server does that)
      */
     async executeToolByName(functionName, args, canvasData) {
-        // Map Gemini function names → internal tool intent IDs
-        const TOOL_NAME_MAP = {
-            'get_assignments':      'globalPlanner',
-            'get_grades':           'gradeAnalyzer',
-            'get_dining_menu':      'diningMenu',
-            'get_announcements':    'announcementReader',
-            'get_course_list':      'courseLister',
-            'get_syllabus':         'syllabusReader',
-            'get_assignment_detail': 'assignmentDetail',
-            'get_emails':           'gmailEmail',
-            // web_search is handled server-side, not here
-        };
-
-        const intentId = TOOL_NAME_MAP[functionName];
+        const intentId = this.config.geminiToolMap?.[functionName];
         if (!intentId) {
             console.warn(`🧠 Agent Manager: Unknown function name "${functionName}"`);
             return { error: true, message: `Unknown tool: ${functionName}` };
@@ -191,6 +183,11 @@ class CanvasAgentManager {
                 if (args.time_range) context.timeRange = args.time_range;
                 break;
 
+            case 'get_blackbaud_calendar':
+                if (args.start_date) context.startDate = this.resolveDate(args.start_date);
+                if (args.end_date) context.endDate = this.resolveDate(args.end_date);
+                break;
+
             case 'get_grades':
                 if (args.course_name) context.courseName = args.course_name;
                 if (args.filter) context.filter = args.filter;
@@ -232,6 +229,9 @@ class CanvasAgentManager {
         switch (functionName) {
             case 'get_assignments':
                 return `show ${args.time_range || 'upcoming'} assignments${args.course_name ? ` for ${args.course_name}` : ''}`;
+
+            case 'get_blackbaud_calendar':
+                return `show blackbaud calendar events${args.start_date ? ` from ${args.start_date}` : ''}${args.end_date ? ` to ${args.end_date}` : ''}`;
 
             case 'get_grades':
                 return `show ${args.filter || 'all'} grades${args.course_name ? ` for ${args.course_name}` : ''}`;
@@ -602,6 +602,11 @@ class CanvasAgentManager {
             /what('s|\s+is)\s+(for\s+)?(lunch|dinner|breakfast)/i.test(lowerMsg)) {
             console.log("🍽️ Dining detected -> DiningMenu");
             return 'diningMenu';
+        }
+
+        if (/\bblackbaud\b/i.test(lowerMsg) && /\b(calendar|schedule|event|events)\b/i.test(lowerMsg)) {
+            console.log("📅 Blackbaud calendar detected -> BlackbaudCalendar");
+            return 'blackbaudCalendar';
         }
 
         // ──────────────────────────────────────────────────────────────
