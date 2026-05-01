@@ -232,7 +232,12 @@ h3 {
     width: 100%;
     border-radius: 12px 12px 6px 6px;
     background: linear-gradient(180deg, var(--accent-secondary), var(--accent-primary));
-    min-height: 8px;
+    min-height: 0;
+}
+
+.workload-bar--empty {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
 }
 
 .course-health-grid {

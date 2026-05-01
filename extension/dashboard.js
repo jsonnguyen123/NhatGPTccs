@@ -1,6 +1,7 @@
 const MAX_BINARY_SEARCH_ITERATIONS = 25;
 const SPARKLINE_VERTICAL_PADDING = 12;
 const SPARKLINE_OFFSET = 6;
+const DASHBOARD_DEBUG = false;
 
 class AcademicDashboard {
     constructor() {
@@ -163,48 +164,66 @@ class AcademicDashboard {
 
     renderWeeklyWorkloadChart() {
         const assignments = (this.canvasData?.assignments || []).filter(assignment => assignment.dueDate);
-        if (assignments.length === 0) {
-            this.workloadChartEl.innerHTML = '<div class="empty-state">No upcoming assignments are available for this week.</div>';
-            return;
+        const dayBuckets = this.buildWeeklyWorkloadBuckets(assignments);
+        if (DASHBOARD_DEBUG) {
+            console.log('Dashboard workload buckets', dayBuckets);
         }
 
-        const startOfWeek = new Date();
-        startOfWeek.setHours(0, 0, 0, 0);
-        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-
-        const dayBuckets = Array.from({ length: 7 }, (_, index) => {
-            const dayDate = new Date(startOfWeek);
-            dayDate.setDate(startOfWeek.getDate() + index);
-            return {
-                label: dayDate.toLocaleDateString('en-US', { weekday: 'short' }),
-                date: dayDate,
-                total: 0,
-                count: 0
-            };
-        });
-
-        assignments.forEach(assignment => {
-            const dueDate = new Date(assignment.dueDate);
-            const diff = Math.floor((dueDate.setHours(0, 0, 0, 0) - startOfWeek.getTime()) / (1000 * 60 * 60 * 24));
-            if (diff >= 0 && diff < 7) {
-                dayBuckets[diff].count += 1;
-                dayBuckets[diff].total += this.computePriorityScore(assignment);
-            }
-        });
-
-        const maxTotal = Math.max(...dayBuckets.map(bucket => bucket.total), 1);
+        const maxTotal = Math.max(...dayBuckets.map(bucket => bucket.total), 0);
         this.workloadChartEl.innerHTML = dayBuckets.map(bucket => {
-            const height = Math.max((bucket.total / maxTotal) * 100, bucket.total > 0 ? 12 : 8);
+            const height = maxTotal > 0 ? (bucket.total / maxTotal) * 100 : 0;
             return `
                 <div class="workload-day">
                     <div class="workload-bar-wrap">
-                        <div class="workload-bar" style="height:${height}%"></div>
+                        <div class="workload-bar ${bucket.total === 0 ? 'workload-bar--empty' : ''}" style="height:${height}%"></div>
                     </div>
                     <strong>${bucket.label}</strong>
                     <span class="chart-caption">${bucket.count} item${bucket.count === 1 ? '' : 's'}</span>
                 </div>
             `;
         }).join('');
+    }
+
+    buildWeeklyWorkloadBuckets(assignments) {
+        const startOfWeek = this.getStartOfCurrentWeek();
+        return Array.from({ length: 7 }, (_, index) => {
+            const dayDate = new Date(startOfWeek);
+            dayDate.setDate(startOfWeek.getDate() + index);
+            const bucket = {
+                label: dayDate.toLocaleDateString('en-US', { weekday: 'short' }),
+                date: dayDate,
+                total: 0,
+                count: 0
+            };
+
+            assignments.forEach(assignment => {
+                const assignmentDay = this.normalizeDateOnly(assignment.dueDate);
+                if (assignmentDay.getTime() === dayDate.getTime()) {
+                    bucket.count += 1;
+                    bucket.total += this.computePriorityScore(assignment);
+                }
+            });
+
+            return bucket;
+        });
+    }
+
+    getStartOfCurrentWeek() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const day = today.getDay();
+        const offsetFromMonday = day === 0 ? 6 : day - 1;
+        today.setDate(today.getDate() - offsetFromMonday);
+        return today;
+    }
+
+    normalizeDateOnly(value) {
+        const normalized = new Date(value);
+        if (Number.isNaN(normalized.getTime())) {
+            return new Date('Invalid Date');
+        }
+        normalized.setHours(0, 0, 0, 0);
+        return normalized;
     }
 
     renderCourseHealthGrid() {
