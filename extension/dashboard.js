@@ -11,6 +11,8 @@ class AcademicDashboard {
         this.simulatorCache = new Map();
         this.simulatorRows = [];
         this.simulatorMeta = null;
+        this.toolManager = typeof window.ToolManager === 'function' ? new window.ToolManager() : null;
+        this.gradeAnalyzerTool = this.toolManager?.getTool('gradeAnalyzer') || null;
         this.init();
     }
 
@@ -128,17 +130,13 @@ class AcademicDashboard {
 
     renderGradeTrends() {
         const courses = this.canvasData?.courses || [];
-        const grades = this.canvasData?.assignmentGrades || [];
         if (courses.length === 0) {
             this.gradeTrendsEl.innerHTML = '<div class="empty-state">No course grade history is available yet.</div>';
             return;
         }
 
         const cards = courses.map(course => {
-            const courseGrades = grades
-                .filter(grade => String(grade.courseId) === String(course.id) && Number.isFinite(Number(grade.percentage)))
-                .sort((firstGrade, secondGrade) => this.getGradeSortTimestamp(firstGrade) - this.getGradeSortTimestamp(secondGrade))
-                .slice(-6);
+            const courseGrades = this.getChartGradeEntries(course.id).slice(-6);
 
             const values = courseGrades.map(grade => Number(grade.percentage));
             const chart = values.length >= 2 ? this.buildSparkline(values) : '<div class="empty-state">Need at least two graded items to show a trend.</div>';
@@ -212,7 +210,6 @@ class AcademicDashboard {
     renderCourseHealthGrid() {
         const courses = this.canvasData?.courses || [];
         const assignments = this.canvasData?.assignments || [];
-        const grades = this.canvasData?.assignmentGrades || [];
         if (courses.length === 0) {
             this.courseHealthGridEl.innerHTML = '<div class="empty-state">No courses are available yet.</div>';
             return;
@@ -222,9 +219,7 @@ class AcademicDashboard {
             const nearestAssignment = assignments
                 .filter(assignment => String(assignment.courseId) === String(course.id) && assignment.dueDate && new Date(assignment.dueDate) >= new Date())
                 .sort((firstAssignment, secondAssignment) => new Date(firstAssignment.dueDate) - new Date(secondAssignment.dueDate))[0];
-            const courseGrades = grades
-                .filter(grade => String(grade.courseId) === String(course.id) && Number.isFinite(Number(grade.percentage)))
-                .sort((firstGrade, secondGrade) => new Date(firstGrade.gradedAt || firstGrade.dueAt || 0) - new Date(secondGrade.gradedAt || secondGrade.dueAt || 0));
+            const courseGrades = this.getChartGradeEntries(course.id);
             const latestValues = courseGrades.slice(-2).map(grade => Number(grade.percentage));
             const trendDelta = latestValues.length === 2 ? latestValues[1] - latestValues[0] : 0;
             const trendClass = trendDelta > 1 ? 'trend-up' : trendDelta < -1 ? 'trend-down' : 'trend-flat';
@@ -585,8 +580,37 @@ class AcademicDashboard {
         });
     }
 
+    getChartGradeEntries(courseId) {
+        const grades = Array.isArray(this.canvasData?.assignmentGrades) ? this.canvasData.assignmentGrades : [];
+        return grades
+            .filter(grade => String(grade.courseId) === String(courseId))
+            .map(grade => this.normalizeGradeEntry(grade))
+            .filter(grade => grade.score !== null && !grade.excused && Number.isFinite(grade.percentage))
+            .sort((firstGrade, secondGrade) => this.getGradeSortTimestamp(firstGrade) - this.getGradeSortTimestamp(secondGrade));
+    }
+
+    normalizeGradeEntry(grade) {
+        const score = grade?.score != null ? Number(grade.score) : null;
+        const pointsPossible = Number(grade?.pointsPossible);
+        const fallbackPercentage = score != null && Number.isFinite(pointsPossible) && pointsPossible > 0
+            ? (score / pointsPossible) * 100
+            : null;
+
+        return {
+            ...grade,
+            score,
+            pointsPossible,
+            percentage: Number.isFinite(Number(grade?.percentage))
+                ? Number(grade.percentage)
+                : fallbackPercentage,
+            chartDate: this.gradeAnalyzerTool?.getGradeDate
+                ? this.gradeAnalyzerTool.getGradeDate(grade)
+                : (grade?.dueAt || grade?.gradedAt || grade?.submittedAt || null)
+        };
+    }
+
     getGradeSortTimestamp(grade) {
-        const timestamp = grade?.gradedAt || grade?.dueAt;
+        const timestamp = grade?.chartDate || grade?.gradedAt || grade?.dueAt;
         if (!timestamp) return Number.MAX_SAFE_INTEGER;
         const parsed = new Date(timestamp).getTime();
         return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
