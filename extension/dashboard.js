@@ -14,6 +14,7 @@ class AcademicDashboard {
         this.simulatorMeta = null;
         this.toolManager = typeof window.ToolManager === 'function' ? new window.ToolManager() : null;
         this.gradeAnalyzerTool = this.toolManager?.getTool('gradeAnalyzer') || null;
+        this.hasLoggedGradeAnalyzerFallback = false;
         this.init();
     }
 
@@ -624,8 +625,16 @@ class AcademicDashboard {
                 : fallbackPercentage,
             chartDate: this.gradeAnalyzerTool?.getGradeDate
                 ? this.gradeAnalyzerTool.getGradeDate(grade)
-                : (grade?.dueAt || grade?.gradedAt || grade?.submittedAt || null)
+                : this.getFallbackGradeDate(grade)
         };
+    }
+
+    getFallbackGradeDate(grade) {
+        if (!this.hasLoggedGradeAnalyzerFallback) {
+            console.warn('Dashboard: GradeAnalyzerTool unavailable, using local grade date fallback.');
+            this.hasLoggedGradeAnalyzerFallback = true;
+        }
+        return grade?.dueAt || grade?.gradedAt || grade?.submittedAt || null;
     }
 
     getGradeSortTimestamp(grade) {
