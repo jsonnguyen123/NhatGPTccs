@@ -324,7 +324,7 @@ class AcademicDashboard {
         });
 
         groupedEntries.forEach(dayEntries => {
-            dayEntries.sort((firstEntry, secondEntry) => this.getWeeklyScheduleSortValue(firstEntry.startTime) - this.getWeeklyScheduleSortValue(secondEntry.startTime));
+            dayEntries.sort((a, b) => this.getWeeklyScheduleSortValue(a.startTime) - this.getWeeklyScheduleSortValue(b.startTime));
         });
 
         return groupedEntries;

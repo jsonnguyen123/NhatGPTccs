@@ -1821,11 +1821,11 @@ class CanvasAIBackground {
             uniqueEntries.push(entry);
         });
 
-        return uniqueEntries.sort((firstEntry, secondEntry) => {
-            if (firstEntry.date !== secondEntry.date) {
-                return firstEntry.date.localeCompare(secondEntry.date);
+        return uniqueEntries.sort((a, b) => {
+            if (a.date !== b.date) {
+                return a.date.localeCompare(b.date);
             }
-            return String(firstEntry.startTime || '').localeCompare(String(secondEntry.startTime || ''));
+            return String(a.startTime || '').localeCompare(String(b.startTime || ''));
         });
     }
 
@@ -1846,7 +1846,8 @@ class CanvasAIBackground {
         return rawDays
             .map(day => {
                 if (typeof day === 'number') {
-                    return dayLookup.get(['mon', 'tue', 'wed', 'thu', 'fri'][day - 1] || '');
+                    if (day < 1 || day > 5) return null;
+                    return dayLookup.get(['mon', 'tue', 'wed', 'thu', 'fri'][day - 1]);
                 }
 
                 const normalizedDay = String(day || '').trim().toLowerCase();
