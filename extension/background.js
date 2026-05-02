@@ -1818,7 +1818,7 @@ class CanvasAIBackground {
         const uniqueEntries = [];
         const seenEntries = new Set();
         normalizedEntries.forEach(entry => {
-            const entryKey = [entry.date, entry.startTime, entry.endTime, entry.courseName, entry.teacherName, entry.room].join('|');
+            const entryKey = [entry.date, entry.startTime, entry.endTime, entry.courseName, entry.teacherName, entry.room].join('\0');
             if (seenEntries.has(entryKey)) return;
             seenEntries.add(entryKey);
             uniqueEntries.push(entry);
@@ -1849,7 +1849,7 @@ class CanvasAIBackground {
         return rawDays
             .map(day => {
                 if (typeof day === 'number') {
-                    const normalizedDayIndex = day >= 1 && day <= 5 ? day - 1 : day >= 0 && day <= 4 ? day : null;
+                    const normalizedDayIndex = this.normalizeBlackbaudScheduleDayIndex(day);
                     return normalizedDayIndex == null ? null : dayLookup.get(['mon', 'tue', 'wed', 'thu', 'fri'][normalizedDayIndex]);
                 }
 
@@ -1857,6 +1857,16 @@ class CanvasAIBackground {
                 return dayLookup.get(normalizedDay) || dayLookup.get(normalizedDay.slice(0, 3)) || null;
             })
             .filter(Boolean);
+    }
+
+    /**
+     * @param {number} dayValue
+     * @returns {number|null}
+     */
+    normalizeBlackbaudScheduleDayIndex(dayValue) {
+        if (dayValue >= 1 && dayValue <= 5) return dayValue - 1;
+        if (dayValue >= 0 && dayValue <= 4) return dayValue;
+        return null;
     }
 
     /**
