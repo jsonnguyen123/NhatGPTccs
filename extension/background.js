@@ -1198,6 +1198,19 @@ class CanvasAIBackground {
                     }
                     break;
 
+                case 'FETCH_BLACKBAUD_STUDENT_SCHEDULE':
+                    try {
+                        const scheduleData = await this.fetchBlackbaudStudentScheduleData(request.referenceDate ? new Date(request.referenceDate) : new Date());
+                        sendResponse({ success: true, data: scheduleData });
+                    } catch (error) {
+                        sendResponse({
+                            success: false,
+                            error: error.message,
+                            needsReconnect: error.needsReconnect === true
+                        });
+                    }
+                    break;
+
                 case 'FETCH_GRADES':
                     this.handleFetchGrades(sendResponse);
                     return true;
@@ -1698,6 +1711,221 @@ class CanvasAIBackground {
             startDate: range.startDate,
             endDate: range.endDate
         };
+    }
+
+    /**
+     * @param {Date} referenceDate
+     * @returns {{startDate:string,endDate:string}}
+     */
+    getBlackbaudStudentScheduleDateRange(referenceDate) {
+        const baseDate = new Date(referenceDate);
+        baseDate.setHours(0, 0, 0, 0);
+        const weekday = baseDate.getDay();
+        const offsetFromMonday = weekday === 0 ? 6 : weekday - 1;
+        baseDate.setDate(baseDate.getDate() - offsetFromMonday);
+
+        const endDate = new Date(baseDate);
+        endDate.setDate(baseDate.getDate() + 4);
+
+        return {
+            startDate: this.toBlackbaudIsoDate(baseDate),
+            endDate: this.toBlackbaudIsoDate(endDate)
+        };
+    }
+
+    /**
+     * @param {string} startDate
+     * @param {string} endDate
+     * @returns {string}
+     */
+    buildBlackbaudStudentScheduleEndpoint(startDate, endDate) {
+        const params = new URLSearchParams({
+            user_id: 'self',
+            start_date: startDate,
+            end_date: endDate
+        });
+        return `/school/v1/academics/schedule/student?${params.toString()}`;
+    }
+
+    /**
+     * @param {Date} referenceDate
+     * @returns {Promise<{entries:Array<{date:string,startTime:string,endTime:string,courseName:string,teacherName:string,room:string}>,startDate:string,endDate:string}>}
+     */
+    async fetchBlackbaudStudentScheduleData(referenceDate) {
+        const range = this.getBlackbaudStudentScheduleDateRange(referenceDate);
+        const rawData = await this.requestBlackbaudData({
+            endpoint: this.buildBlackbaudStudentScheduleEndpoint(range.startDate, range.endDate)
+        });
+
+        return {
+            entries: this.normalizeBlackbaudStudentScheduleEntries(rawData, range),
+            startDate: range.startDate,
+            endDate: range.endDate
+        };
+    }
+
+    /**
+     * @param {unknown} rawData
+     * @param {{startDate:string,endDate:string}} range
+     * @returns {Array<{date:string,startTime:string,endTime:string,courseName:string,teacherName:string,room:string}>}
+     */
+    normalizeBlackbaudStudentScheduleEntries(rawData, range) {
+        const rawEntries = Array.isArray(rawData?.value)
+            ? rawData.value
+            : Array.isArray(rawData?.schedule)
+                ? rawData.schedule
+                : Array.isArray(rawData)
+                    ? rawData
+                    : [];
+
+        const dayLookup = new Map();
+        for (let offset = 0; offset < 5; offset += 1) {
+            const dayDate = this.parseBlackbaudDate(range.startDate);
+            dayDate.setDate(dayDate.getDate() + offset);
+            const isoDate = this.toBlackbaudIsoDate(dayDate);
+            const fullDay = dayDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+            const shortDay = dayDate.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase();
+            dayLookup.set(fullDay, isoDate);
+            dayLookup.set(shortDay, isoDate);
+        }
+
+        const normalizedEntries = [];
+        const rangeStartTime = this.parseBlackbaudDate(range.startDate).getTime();
+        const rangeEndTime = this.parseBlackbaudDate(range.endDate).getTime();
+        rawEntries.forEach(entry => {
+            const startSource = entry?.start_time || entry?.startTime || entry?.start || entry?.start_date;
+            const endSource = entry?.end_time || entry?.endTime || entry?.end || entry?.end_date;
+            const normalizedEntry = {
+                startTime: this.normalizeBlackbaudScheduleTime(startSource),
+                endTime: this.normalizeBlackbaudScheduleTime(endSource),
+                courseName: entry?.course_name || entry?.course || entry?.section_name || entry?.class_name || entry?.name || 'Class',
+                teacherName: this.extractBlackbaudScheduleTeacherName(entry),
+                room: this.extractBlackbaudScheduleRoom(entry)
+            };
+
+            const explicitDate = this.extractBlackbaudScheduleDate(entry?.meeting_date || entry?.date || entry?.class_date || entry?.start_date || entry?.start);
+            const explicitDateTime = explicitDate ? this.parseBlackbaudDate(explicitDate).getTime() : null;
+            if (explicitDateTime != null && explicitDateTime >= rangeStartTime && explicitDateTime <= rangeEndTime) {
+                normalizedEntries.push({ date: explicitDate, ...normalizedEntry });
+                return;
+            }
+
+            this.extractBlackbaudStudentScheduleDays(entry, dayLookup).forEach(date => {
+                normalizedEntries.push({ date, ...normalizedEntry });
+            });
+        });
+
+        const uniqueEntries = [];
+        const seenEntries = new Set();
+        normalizedEntries.forEach(entry => {
+            const entryKey = [entry.date, entry.startTime, entry.endTime, entry.courseName, entry.teacherName, entry.room].join('\0');
+            if (seenEntries.has(entryKey)) return;
+            seenEntries.add(entryKey);
+            uniqueEntries.push(entry);
+        });
+
+        return uniqueEntries.sort((a, b) => {
+            if (a.date !== b.date) {
+                return a.date.localeCompare(b.date);
+            }
+            return String(a.startTime || '').localeCompare(String(b.startTime || ''));
+        });
+    }
+
+    /**
+     * @param {Record<string, any>} entry
+     * @param {Map<string,string>} dayLookup
+     * @returns {Array<string>}
+     */
+    extractBlackbaudStudentScheduleDays(entry, dayLookup) {
+        const rawDays = [];
+
+        if (Array.isArray(entry?.days)) rawDays.push(...entry.days);
+        if (Array.isArray(entry?.day_names)) rawDays.push(...entry.day_names);
+        if (Array.isArray(entry?.meeting_days)) rawDays.push(...entry.meeting_days);
+        if (entry?.day_name) rawDays.push(entry.day_name);
+        if (entry?.day) rawDays.push(entry.day);
+
+        return rawDays
+            .map(day => {
+                if (typeof day === 'number') {
+                    const normalizedDayIndex = this.normalizeBlackbaudScheduleDayIndex(day);
+                    return normalizedDayIndex == null ? null : dayLookup.get(['mon', 'tue', 'wed', 'thu', 'fri'][normalizedDayIndex]);
+                }
+
+                const normalizedDay = String(day || '').trim().toLowerCase();
+                return dayLookup.get(normalizedDay) || dayLookup.get(normalizedDay.slice(0, 3)) || null;
+            })
+            .filter(Boolean);
+    }
+
+    /**
+     * @param {number} dayValue
+     * @returns {number|null}
+     */
+    normalizeBlackbaudScheduleDayIndex(dayValue) {
+        if (dayValue >= 1 && dayValue <= 5) return dayValue - 1;
+        if (dayValue >= 0 && dayValue <= 4) return dayValue;
+        return null;
+    }
+
+    /**
+     * @param {unknown} value
+     * @returns {string|null}
+     */
+    extractBlackbaudScheduleDate(value) {
+        if (!value) return null;
+        const parsedDate = new Date(value);
+        if (Number.isNaN(parsedDate.getTime())) return null;
+        return this.toBlackbaudIsoDate(parsedDate);
+    }
+
+    /**
+     * @param {unknown} timeValue
+     * @returns {string}
+     */
+    normalizeBlackbaudScheduleTime(timeValue) {
+        if (!timeValue) return '';
+        const matchedTime = String(timeValue).match(/(\d{1,2}):(\d{2})/);
+        if (!matchedTime) return '';
+        return `${matchedTime[1].padStart(2, '0')}:${matchedTime[2]}`;
+    }
+
+    /**
+     * @param {Record<string, any>} entry
+     * @returns {string}
+     */
+    extractBlackbaudScheduleTeacherName(entry) {
+        const teacherSources = [
+            entry?.teacher,
+            entry?.primary_teacher,
+            entry?.lead_teacher,
+            Array.isArray(entry?.teachers) ? entry.teachers[0] : null
+        ];
+
+        for (const teacher of teacherSources) {
+            if (!teacher) continue;
+            if (typeof teacher === 'string') return teacher;
+            const name = teacher.display_name || teacher.name || teacher.full_name;
+            if (name) return name;
+        }
+
+        return '';
+    }
+
+    /**
+     * @param {Record<string, any>} entry
+     * @returns {string}
+     */
+    extractBlackbaudScheduleRoom(entry) {
+        const roomValue = entry?.room
+            || entry?.room_name
+            || entry?.location
+            || entry?.location_name
+            || entry?.building_room;
+
+        if (!roomValue) return '';
+        return typeof roomValue === 'string' ? roomValue : (roomValue.name || roomValue.description || '');
     }
 
     // Simplified helper - just stores locally for backup/debugging

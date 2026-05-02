@@ -8,6 +8,8 @@ class AcademicDashboard {
         this.canvasData = null;
         this.lastUpdate = null;
         this.briefing = null;
+        this.weeklyScheduleEntries = [];
+        this.activeScheduleDayIndex = this.getInitialScheduleDayIndex(new Date());
         this.selectedTarget = null;
         this.simulatorCache = new Map();
         this.simulatorRows = [];
@@ -28,9 +30,11 @@ class AcademicDashboard {
         this.renderCourseHealthGrid();
         this.renderRecentActivity();
         this.populateCourseSelector();
+        this.renderWeeklyScheduleSkeleton(this.getScheduleDayDefinitions(new Date()));
         await Promise.all([
             this.loadAcademicBriefing(),
-            this.initializeSimulator()
+            this.initializeSimulator(),
+            this.loadWeeklySchedule()
         ]);
     }
 
@@ -43,6 +47,10 @@ class AcademicDashboard {
         this.workloadChartEl = document.getElementById('workload-chart');
         this.courseHealthGridEl = document.getElementById('course-health-grid');
         this.recentActivityListEl = document.getElementById('recent-activity-list');
+        this.weeklyScheduleEl = document.getElementById('weekly-schedule');
+        this.schedulePrevDayEl = document.getElementById('schedule-prev-day');
+        this.scheduleNextDayEl = document.getElementById('schedule-next-day');
+        this.scheduleCurrentDayLabelEl = document.getElementById('schedule-current-day-label');
         this.courseSelectorEl = document.getElementById('course-selector');
         this.resetSimulatorEl = document.getElementById('reset-simulator');
         this.simulatorOverallGradeEl = document.getElementById('simulator-overall-grade');
@@ -68,6 +76,8 @@ class AcademicDashboard {
         });
         this.refreshBriefingEl.addEventListener('click', () => this.loadAcademicBriefing(true));
         this.openSettingsEl.addEventListener('click', () => chrome.runtime.openOptionsPage());
+        this.schedulePrevDayEl.addEventListener('click', () => this.changeWeeklyScheduleDay(-1));
+        this.scheduleNextDayEl.addEventListener('click', () => this.changeWeeklyScheduleDay(1));
     }
 
     async sendMessage(message) {
@@ -128,6 +138,249 @@ class AcademicDashboard {
             console.error('Dashboard: Failed to load academic briefing', error);
             this.briefingSummaryEl.textContent = 'Academic briefing is unavailable right now. The dashboard visuals below still reflect your latest synced data.';
         }
+    }
+
+    /**
+     * @param {Date} referenceDate
+     * @returns {number}
+     */
+    getInitialScheduleDayIndex(referenceDate) {
+        const weekday = new Date(referenceDate).getDay();
+        return weekday >= 1 && weekday <= 5 ? weekday - 1 : 0;
+    }
+
+    /**
+     * @param {Date} referenceDate
+     * @returns {Array<{index:number,label:string,fullLabel:string,shortDate:string,isoDate:string,isToday:boolean}>}
+     */
+    getScheduleDayDefinitions(referenceDate) {
+        const baseDate = new Date(referenceDate);
+        baseDate.setHours(0, 0, 0, 0);
+        const weekday = baseDate.getDay();
+        const offsetFromMonday = weekday === 0 ? 6 : weekday - 1;
+        baseDate.setDate(baseDate.getDate() - offsetFromMonday);
+
+        const todayIsoDate = this.toIsoDate(new Date(referenceDate));
+        return Array.from({ length: 5 }, (_, index) => {
+            const dayDate = new Date(baseDate);
+            dayDate.setDate(baseDate.getDate() + index);
+            const isoDate = this.toIsoDate(dayDate);
+            return {
+                index,
+                label: dayDate.toLocaleDateString('en-US', { weekday: 'short' }),
+                fullLabel: dayDate.toLocaleDateString('en-US', { weekday: 'long' }),
+                shortDate: dayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                isoDate,
+                isToday: isoDate === todayIsoDate
+            };
+        });
+    }
+
+    /**
+     * @param {Date} date
+     * @returns {string}
+     */
+    toIsoDate(date) {
+        const normalizedDate = new Date(date);
+        normalizedDate.setHours(0, 0, 0, 0);
+        return normalizedDate.toISOString().split('T')[0];
+    }
+
+    /**
+     * @param {number} offset
+     * @returns {void}
+     */
+    changeWeeklyScheduleDay(offset) {
+        const nextIndex = Math.max(0, Math.min(4, this.activeScheduleDayIndex + offset));
+        if (nextIndex === this.activeScheduleDayIndex) return;
+        this.activeScheduleDayIndex = nextIndex;
+        this.renderWeeklySchedule(this.weeklyScheduleEntries);
+    }
+
+    /**
+     * @param {Array<{index:number,label:string,fullLabel:string,shortDate:string,isoDate:string,isToday:boolean}>} days
+     * @returns {void}
+     */
+    updateWeeklyScheduleNavigation(days) {
+        const activeDay = days[this.activeScheduleDayIndex] || days[0] || null;
+        this.scheduleCurrentDayLabelEl.textContent = activeDay
+            ? `${activeDay.fullLabel} · ${activeDay.shortDate}`
+            : 'This week';
+        this.schedulePrevDayEl.disabled = this.activeScheduleDayIndex <= 0;
+        this.scheduleNextDayEl.disabled = this.activeScheduleDayIndex >= days.length - 1;
+    }
+
+    /**
+     * @param {Array<{index:number,label:string,fullLabel:string,shortDate:string,isoDate:string,isToday:boolean}>} days
+     * @returns {void}
+     */
+    renderWeeklyScheduleSkeleton(days) {
+        this.weeklyScheduleEl.innerHTML = `
+            <div class="weekly-schedule-grid" aria-busy="true">
+                ${days.map(day => `
+                    <article class="schedule-day-column ${day.isToday ? 'schedule-day-column--today' : ''} ${day.index === this.activeScheduleDayIndex ? 'is-active' : ''}" data-day-index="${day.index}">
+                        <div class="schedule-day-header">
+                            <h3>${day.label}</h3>
+                            <p class="meta-text">${day.shortDate}</p>
+                        </div>
+                        <div class="schedule-day-list">
+                            ${Array.from({ length: 3 }, () => `
+                                <div class="schedule-class-card schedule-class-card--skeleton" aria-hidden="true">
+                                    <div class="schedule-skeleton schedule-skeleton--title"></div>
+                                    <div class="schedule-skeleton schedule-skeleton--time"></div>
+                                    <div class="schedule-skeleton schedule-skeleton--meta"></div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </article>
+                `).join('')}
+            </div>
+        `;
+        this.updateWeeklyScheduleNavigation(days);
+    }
+
+    /**
+     * @param {string} message
+     * @returns {void}
+     */
+    renderWeeklyScheduleError(message) {
+        this.weeklyScheduleEl.innerHTML = `<div class="empty-state schedule-inline-error">${this.escapeHtml(message)}</div>`;
+        this.weeklyScheduleEl.setAttribute('aria-busy', 'false');
+        this.scheduleCurrentDayLabelEl.textContent = 'Unavailable';
+        this.schedulePrevDayEl.disabled = true;
+        this.scheduleNextDayEl.disabled = true;
+    }
+
+    /**
+     * @param {Date} referenceDate
+     * @returns {Promise<void>}
+     */
+    async loadWeeklySchedule(referenceDate = new Date()) {
+        try {
+            const response = await this.sendMessage({
+                type: 'FETCH_BLACKBAUD_STUDENT_SCHEDULE',
+                referenceDate: referenceDate.toISOString()
+            });
+            this.weeklyScheduleEntries = Array.isArray(response.data?.entries) ? response.data.entries : [];
+            this.renderWeeklySchedule(this.weeklyScheduleEntries);
+        } catch (error) {
+            console.error('Dashboard: Failed to load weekly schedule', error);
+            this.weeklyScheduleEntries = [];
+            this.renderWeeklyScheduleError('Weekly schedule is unavailable right now.');
+        }
+    }
+
+    /**
+     * @param {Array<{date:string,startTime:string,endTime:string,courseName:string,teacherName:string,room:string}>} entries
+     * @returns {void}
+     */
+    renderWeeklySchedule(entries) {
+        const days = this.getScheduleDayDefinitions(new Date());
+        const groupedEntries = this.groupWeeklyScheduleEntries(entries, days);
+
+        this.weeklyScheduleEl.innerHTML = `
+            <div class="weekly-schedule-grid" aria-busy="false">
+                ${days.map(day => {
+                    const dayEntries = groupedEntries.get(day.isoDate) || [];
+                    return `
+                        <article class="schedule-day-column ${day.isToday ? 'schedule-day-column--today' : ''} ${day.index === this.activeScheduleDayIndex ? 'is-active' : ''}" data-day-index="${day.index}">
+                            <div class="schedule-day-header">
+                                <h3>${day.label}</h3>
+                                <p class="meta-text">${day.shortDate}</p>
+                            </div>
+                            <div class="schedule-day-list">
+                                ${dayEntries.length > 0
+                                    ? dayEntries.map(entry => `
+                                        <div class="schedule-class-card">
+                                            <div class="schedule-class-title">${this.escapeHtml(entry.courseName || 'Class')}</div>
+                                            <div class="schedule-class-time">${this.escapeHtml(this.formatWeeklyScheduleTimeRange(entry.startTime, entry.endTime))}</div>
+                                            ${this.getWeeklyScheduleMetaLine(entry)
+                                                ? `<div class="schedule-class-meta">${this.escapeHtml(this.getWeeklyScheduleMetaLine(entry))}</div>`
+                                                : ''}
+                                        </div>
+                                    `).join('')
+                                    : '<div class="schedule-empty-day">No classes</div>'
+                                }
+                            </div>
+                        </article>
+                    `;
+                }).join('')}
+            </div>
+        `;
+
+        this.updateWeeklyScheduleNavigation(days);
+    }
+
+    /**
+     * @param {Array<{date:string,startTime:string,endTime:string,courseName:string,teacherName:string,room:string}>} entries
+     * @param {Array<{isoDate:string}>} days
+     * @returns {Map<string, Array<{date:string,startTime:string,endTime:string,courseName:string,teacherName:string,room:string}>>}
+     */
+    groupWeeklyScheduleEntries(entries, days) {
+        const groupedEntries = new Map(days.map(day => [day.isoDate, []]));
+
+        entries.forEach(entry => {
+            if (!entry?.date || !groupedEntries.has(entry.date)) return;
+            groupedEntries.get(entry.date).push(entry);
+        });
+
+        groupedEntries.forEach(dayEntries => {
+            dayEntries.sort((a, b) => this.getWeeklyScheduleSortValue(a.startTime) - this.getWeeklyScheduleSortValue(b.startTime));
+        });
+
+        return groupedEntries;
+    }
+
+    /**
+     * @param {string} timeValue
+     * @returns {number}
+     */
+    getWeeklyScheduleSortValue(timeValue) {
+        if (!timeValue) return Infinity;
+        const [hours = '99', minutes = '99'] = String(timeValue).split(':');
+        return Number(hours) * 60 + Number(minutes);
+    }
+
+    /**
+     * @param {string} startTime
+     * @param {string} endTime
+     * @returns {string}
+     */
+    formatWeeklyScheduleTimeRange(startTime, endTime) {
+        const formattedStart = this.formatWeeklyScheduleTime(startTime);
+        const formattedEnd = this.formatWeeklyScheduleTime(endTime);
+
+        if (!formattedStart && !formattedEnd) return 'Time unavailable';
+        if (!formattedEnd) return formattedStart;
+        if (!formattedStart) return formattedEnd;
+        return `${formattedStart} – ${formattedEnd}`;
+    }
+
+    /**
+     * @param {string} timeValue
+     * @returns {string}
+     */
+    formatWeeklyScheduleTime(timeValue) {
+        if (!timeValue) return '';
+
+        const match = String(timeValue).match(/^(\d{1,2}):(\d{2})/);
+        if (!match) return String(timeValue);
+
+        const hours = Number(match[1]);
+        const minutes = match[2];
+        if (!Number.isFinite(hours)) return String(timeValue);
+
+        const normalizedHours = hours % 12 || 12;
+        const meridiem = hours >= 12 ? 'PM' : 'AM';
+        return `${normalizedHours}:${minutes} ${meridiem}`;
+    }
+
+    /**
+     * @param {{teacherName?:string,room?:string}} entry
+     * @returns {string}
+     */
+    getWeeklyScheduleMetaLine(entry) {
+        return [entry.teacherName, entry.room].filter(Boolean).join(' • ');
     }
 
     renderGradeTrends() {
