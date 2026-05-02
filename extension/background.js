@@ -1790,6 +1790,8 @@ class CanvasAIBackground {
         }
 
         const normalizedEntries = [];
+        const rangeStartTime = this.parseBlackbaudDate(range.startDate).getTime();
+        const rangeEndTime = this.parseBlackbaudDate(range.endDate).getTime();
         rawEntries.forEach(entry => {
             const startSource = entry?.start_time || entry?.startTime || entry?.start || entry?.start_date;
             const endSource = entry?.end_time || entry?.endTime || entry?.end || entry?.end_date;
@@ -1802,7 +1804,8 @@ class CanvasAIBackground {
             };
 
             const explicitDate = this.extractBlackbaudScheduleDate(entry?.meeting_date || entry?.date || entry?.class_date || entry?.start_date || entry?.start);
-            if (explicitDate && explicitDate >= range.startDate && explicitDate <= range.endDate) {
+            const explicitDateTime = explicitDate ? this.parseBlackbaudDate(explicitDate).getTime() : null;
+            if (explicitDateTime != null && explicitDateTime >= rangeStartTime && explicitDateTime <= rangeEndTime) {
                 normalizedEntries.push({ date: explicitDate, ...normalizedEntry });
                 return;
             }
@@ -1846,8 +1849,8 @@ class CanvasAIBackground {
         return rawDays
             .map(day => {
                 if (typeof day === 'number') {
-                    if (day < 1 || day > 5) return null;
-                    return dayLookup.get(['mon', 'tue', 'wed', 'thu', 'fri'][day - 1]);
+                    const normalizedDayIndex = day >= 1 && day <= 5 ? day - 1 : day >= 0 && day <= 4 ? day : null;
+                    return normalizedDayIndex == null ? null : dayLookup.get(['mon', 'tue', 'wed', 'thu', 'fri'][normalizedDayIndex]);
                 }
 
                 const normalizedDay = String(day || '').trim().toLowerCase();

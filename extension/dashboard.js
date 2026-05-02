@@ -216,7 +216,7 @@ class AcademicDashboard {
      */
     renderWeeklyScheduleSkeleton(days) {
         this.weeklyScheduleEl.innerHTML = `
-            <div class="weekly-schedule-grid">
+            <div class="weekly-schedule-grid" aria-busy="true">
                 ${days.map(day => `
                     <article class="schedule-day-column ${day.isToday ? 'schedule-day-column--today' : ''} ${day.index === this.activeScheduleDayIndex ? 'is-active' : ''}" data-day-index="${day.index}">
                         <div class="schedule-day-header">
@@ -245,6 +245,7 @@ class AcademicDashboard {
      */
     renderWeeklyScheduleError(message) {
         this.weeklyScheduleEl.innerHTML = `<div class="empty-state schedule-inline-error">${this.escapeHtml(message)}</div>`;
+        this.weeklyScheduleEl.setAttribute('aria-busy', 'false');
         this.scheduleCurrentDayLabelEl.textContent = 'Unavailable';
         this.schedulePrevDayEl.disabled = true;
         this.scheduleNextDayEl.disabled = true;
@@ -278,7 +279,7 @@ class AcademicDashboard {
         const groupedEntries = this.groupWeeklyScheduleEntries(entries, days);
 
         this.weeklyScheduleEl.innerHTML = `
-            <div class="weekly-schedule-grid">
+            <div class="weekly-schedule-grid" aria-busy="false">
                 ${days.map(day => {
                     const dayEntries = groupedEntries.get(day.isoDate) || [];
                     return `
@@ -335,7 +336,7 @@ class AcademicDashboard {
      * @returns {number}
      */
     getWeeklyScheduleSortValue(timeValue) {
-        if (!timeValue) return Number.MAX_SAFE_INTEGER;
+        if (!timeValue) return Infinity;
         const [hours = '99', minutes = '99'] = String(timeValue).split(':');
         return Number(hours) * 60 + Number(minutes);
     }
