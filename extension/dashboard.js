@@ -381,10 +381,7 @@ class AcademicDashboard {
         if (weekOffset === this.activeScheduleWeekOffset && this.scheduleWeekCache[weekOffset]) {
             return;
         }
-        this.activeScheduleWeekOffset = weekOffset;
         this.activeScheduleDayIndex = weekOffset === 0 ? this.getInitialScheduleDayIndex(new Date()) : 0;
-        this.renderScheduleWeekButtons();
-        this.renderScheduleWeekRange();
         await this.loadWeeklySchedule(weekOffset);
     }
 
@@ -653,8 +650,9 @@ class AcademicDashboard {
             })));
 
             this.menuDisplayDayCount = this.getWeeklyMenuDayCount(responses);
+            const visibleResponses = responses.slice(0, this.menuDisplayDayCount);
             this.weeklyMenuByDate = new Map(
-                requestedDays.slice(0, this.menuDisplayDayCount).map((day, index) => [day.isoDate, responses[index]?.data || null])
+                visibleResponses.map((response, index) => [requestedDays[index].isoDate, response?.data || null])
             );
             this.renderWeeklyMenu();
         } catch (error) {
