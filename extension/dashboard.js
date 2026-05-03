@@ -614,7 +614,7 @@ class AcademicDashboard {
      */
     renderWeeklyMenuSkeleton(days) {
         this.weeklyMenuEl.innerHTML = `
-            <div class="menu-week-grid" aria-busy="true">
+            <div class="menu-week-grid" style="--menu-grid-columns: ${days.length};" aria-busy="true">
                 ${days.map(day => `
                     <article class="schedule-day-column ${day.isToday ? 'schedule-day-column--today' : ''}">
                         <div class="schedule-day-header">
@@ -706,7 +706,7 @@ class AcademicDashboard {
         ];
 
         this.weeklyMenuEl.innerHTML = `
-            <div class="menu-week-grid" aria-busy="false">
+            <div class="menu-week-grid" style="--menu-grid-columns: ${days.length};" aria-busy="false">
                 ${days.map(day => {
                     const menuData = this.weeklyMenuByDate.get(day.isoDate) || null;
                     return `

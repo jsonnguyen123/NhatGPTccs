@@ -234,7 +234,7 @@ h3 {
 
 .menu-week-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    grid-template-columns: repeat(var(--menu-grid-columns, 5), minmax(0, 1fr));
     gap: 14px;
 }
 
