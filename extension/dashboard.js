@@ -12,11 +12,13 @@ class AcademicDashboard {
         this.activeScheduleWeekOffset = 0;
         this.scheduleWeekDefinitions = this.getScheduleWeekDefinitions(new Date());
         this.scheduleWeekCache = {};
+        this.scheduleRequestToken = 0;
         this.scheduleLoadErrorMessage = '';
         this.weeklyScheduleEntries = [];
         this.activeScheduleDayIndex = this.getInitialScheduleDayIndex(new Date());
         this.weeklyMenuByDate = new Map();
-        this.menuDisplayDayCount = 7;
+        this.maxMenuDayCount = 7;
+        this.menuDisplayDayCount = this.maxMenuDayCount;
         this.selectedTarget = null;
         this.simulatorCache = new Map();
         this.simulatorRows = [];
@@ -40,7 +42,7 @@ class AcademicDashboard {
         this.renderScheduleWeekButtons();
         this.renderScheduleWeekRange();
         this.renderWeeklyScheduleSkeleton(this.getScheduleDayDefinitions(this.getActiveScheduleReferenceDate()));
-        this.renderWeeklyMenuSkeleton(this.getMenuDayDefinitions(new Date(), this.menuDisplayDayCount));
+        this.renderWeeklyMenuSkeleton(this.getMenuDayDefinitions(new Date(), this.maxMenuDayCount));
         await Promise.all([
             this.loadAcademicBriefing(),
             this.initializeSimulator(),
@@ -225,7 +227,7 @@ class AcademicDashboard {
      */
     getScheduleWeekDefinitions(referenceDate) {
         const labels = ['This Week', 'Next Week', 'Week 3', 'Week 4'];
-        return Array.from({ length: 4 }, (_, offset) => {
+        return Array.from({ length: labels.length }, (_, offset) => {
             const startDate = this.getWeekStartDate(referenceDate, offset);
             const endDate = new Date(startDate);
             endDate.setDate(startDate.getDate() + 4);
@@ -448,6 +450,7 @@ class AcademicDashboard {
     async loadWeeklySchedule(weekOffset = this.activeScheduleWeekOffset) {
         const activeWeek = this.getScheduleWeekDefinition(weekOffset);
         const days = this.getScheduleDayDefinitions(activeWeek.referenceDate);
+        const requestToken = ++this.scheduleRequestToken;
         this.activeScheduleWeekOffset = weekOffset;
         this.renderScheduleWeekButtons();
         this.renderScheduleWeekRange();
@@ -482,10 +485,12 @@ class AcademicDashboard {
                 referenceDate: activeWeek.referenceDate.toISOString(),
                 userId: this.blackbaudUserId
             });
+            if (requestToken !== this.scheduleRequestToken) return;
             this.weeklyScheduleEntries = Array.isArray(response.data?.entries) ? response.data.entries : [];
             this.scheduleWeekCache[weekOffset] = this.weeklyScheduleEntries;
             this.renderWeeklySchedule(this.weeklyScheduleEntries);
         } catch (error) {
+            if (requestToken !== this.scheduleRequestToken) return;
             console.error('Dashboard: Failed to load weekly schedule', error);
             this.weeklyScheduleEntries = [];
             this.renderWeeklyScheduleError('Weekly schedule is unavailable right now.', days);
@@ -638,7 +643,7 @@ class AcademicDashboard {
      * @returns {Promise<void>}
      */
     async loadWeeklyMenu() {
-        const requestedDays = this.getMenuDayDefinitions(new Date(), 7);
+        const requestedDays = this.getMenuDayDefinitions(new Date(), this.maxMenuDayCount);
         this.renderWeeklyMenuSkeleton(requestedDays);
 
         try {
@@ -683,7 +688,7 @@ class AcademicDashboard {
      * @returns {string[]}
      */
     getMenuEntrees(menuData, mealName) {
-        const entreePattern = /(entree|entrée|entrees|entrées|entre|main|grill|rotisserie)/i;
+        const entreePattern = /(entree|entrée|entrees|entrées|main|grill|rotisserie)/i;
         const mealEntries = Array.isArray(menuData?.meals?.[mealName]) ? menuData.meals[mealName] : [];
         return mealEntries
             .filter(item => entreePattern.test(String(item?.category || '')))
