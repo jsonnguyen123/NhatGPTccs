@@ -1783,11 +1783,12 @@ class CanvasAIBackground {
      */
     buildBlackbaudStudentScheduleEndpoint(userId, startDate, endDate) {
         const params = new URLSearchParams({
-            user_id: userId,   // real numeric ID, not 'self'
             start_date: startDate,
             end_date: endDate
         });
-        return `/school/v1/academics/schedule/student?${params.toString()}`;
+        // Correct SKY API endpoint: student_id is a PATH segment, not a query param.
+        // Docs: GET /school/v1/schedules/{student_id}/meetings?start_date=...&end_date=...
+        return `/school/v1/schedules/${userId}/meetings?${params.toString()}`;
     }
 
     /**
@@ -1877,7 +1878,9 @@ class CanvasAIBackground {
                 room: this.extractBlackbaudScheduleRoom(entry)
             };
 
-            const explicitDate = this.extractBlackbaudScheduleDate(entry?.meeting_date || entry?.date || entry?.class_date || entry?.start_date || entry?.start);
+            const explicitDate = this.extractBlackbaudScheduleDate(
+                entry?.meeting_date || entry?.date || entry?.class_date || entry?.start_date || entry?.start_time || entry?.start
+            );            
             const explicitDateTime = explicitDate ? this.parseBlackbaudDate(explicitDate).getTime() : null;
             if (explicitDateTime != null && explicitDateTime >= rangeStartTime && explicitDateTime <= rangeEndTime) {
                 normalizedEntries.push({ date: explicitDate, ...normalizedEntry });
