@@ -906,6 +906,38 @@ app.post('/api/blackbaud/oauth/refresh', validateCanvasTokenCached, async (req, 
     } catch (error) { logger.error('Blackbaud refresh error:', error); bbTokenStore.delete(userId); res.status(500).json({ success: false, error: error.message }); }
 });
 
+// ─── Blackbaud Session Status ─────────────────────────────────
+app.get('/api/blackbaud/status', validateCanvasTokenCached, (req, res) => {
+    try {
+        const userId = String(req.canvasUser.id);
+        const stored = bbTokenStore.get(userId);
+
+        if (!stored || !stored.encryptedAccess) {
+            return res.json({ success: true, connected: false });
+        }
+
+        const isExpired = Date.now() > stored.expiresAt;
+        const canRefresh = !!stored.encryptedRefresh;
+
+        // If expired and no refresh token, treat as disconnected
+        if (isExpired && !canRefresh) {
+            bbTokenStore.delete(userId);
+            return res.json({ success: true, connected: false });
+        }
+
+        return res.json({
+            success: true,
+            connected: true,
+            expired: isExpired,
+            canRefresh,
+            expiresAt: new Date(stored.expiresAt).toISOString()
+        });
+    } catch (error) {
+        logger.error('Blackbaud status check error:', error);
+        return res.status(500).json({ success: false, error: 'Status check failed' });
+    }
+});
+
 // ═══════════════════════════════════════════════════════════════
 // 🛡️ AUTHENTICATED ROUTES
 // ═══════════════════════════════════════════════════════════════

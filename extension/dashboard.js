@@ -8,6 +8,7 @@ class AcademicDashboard {
         this.canvasData = null;
         this.lastUpdate = null;
         this.briefing = null;
+        this.blackbaudUserId = null;
         this.weeklyScheduleEntries = [];
         this.activeScheduleDayIndex = this.getInitialScheduleDayIndex(new Date());
         this.selectedTarget = null;
@@ -80,12 +81,39 @@ class AcademicDashboard {
         this.scheduleNextDayEl.addEventListener('click', () => this.changeWeeklyScheduleDay(1));
     }
 
-    async sendMessage(message) {
-        const response = await chrome.runtime.sendMessage(message);
-        if (!response?.success) {
-            throw new Error(response?.error || 'Request failed');
+    async sendMessage(message, retries = 3) {
+        for (let attempt = 0; attempt < retries; attempt++) {
+            // Wake the service worker
+            await new Promise((resolve) => {
+                chrome.runtime.sendMessage({ type: 'PING' }, () => {
+                    void chrome.runtime.lastError; // suppress error
+                    resolve();
+                });
+            });
+    
+            // ← KEY FIX: wait for SW to fully wake before sending real message
+            await new Promise(r => setTimeout(r, 150));
+    
+            const response = await new Promise((resolve) => {
+                chrome.runtime.sendMessage(message, (res) => {
+                    void chrome.runtime.lastError;
+                    resolve(res);
+                });
+            });
+    
+            if (response !== undefined) {
+                if (!response.success) {
+                    throw new Error(response.error || 'Request failed');
+                }
+                return response;
+            }
+    
+            // SW died mid-flight — wait longer before next retry
+            console.warn(`sendMessage: attempt ${attempt + 1} got undefined, retrying...`);
+            await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
         }
-        return response;
+    
+        throw new Error('Service worker unavailable after retries');
     }
 
     async loadCachedData() {
@@ -257,9 +285,25 @@ class AcademicDashboard {
      */
     async loadWeeklySchedule(referenceDate = new Date()) {
         try {
+            // ── Resolve BB user ID (cached after first fetch) ──────────
+            if (!this.blackbaudUserId) {
+                try {
+                    const meResponse = await this.sendMessage({
+                        type: 'BLACKBAUD_PROXY',
+                        endpoint: '/school/v1/users/me',
+                        method: 'GET'
+                    });
+                    this.blackbaudUserId = meResponse?.data?.id;
+                } catch (idError) {
+                    console.warn('Dashboard: Could not resolve BB user ID via proxy, trying schedule directly', idError);
+                }
+                if (!this.blackbaudUserId) throw new Error('Could not resolve Blackbaud user ID');
+            }
+
             const response = await this.sendMessage({
                 type: 'FETCH_BLACKBAUD_STUDENT_SCHEDULE',
-                referenceDate: referenceDate.toISOString()
+                referenceDate: referenceDate.toISOString(),
+                userId: this.blackbaudUserId
             });
             this.weeklyScheduleEntries = Array.isArray(response.data?.entries) ? response.data.entries : [];
             this.renderWeeklySchedule(this.weeklyScheduleEntries);

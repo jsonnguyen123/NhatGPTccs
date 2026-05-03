@@ -85,15 +85,15 @@ class CanvasAIOptions {
                 'theme',
                 'compactMode',
                 'authStatus',
-                'bb_access_token',
+                'bb_auth_status',
                 'gmailConnected',
                 'gmailEmail',
                 'gmailSenderDomains',
                 'gmailDaysBack',
                 'gmailMaxResults'
             ]);
-            this.settings = result;
-            this.updateBlackbaudUI(!!result.bb_access_token);
+            const isBlackbaudConnected = result.bb_auth_status === 'authenticated';
+            this.updateBlackbaudUI(isBlackbaudConnected);
 
             console.log('Options: Settings loaded:', {
                 hasCanvasToken: !!result.canvasToken,
@@ -798,12 +798,14 @@ class CanvasAIOptions {
 
             if (response && response.success) {
                 this.showSuccess('Blackbaud connected! Reload Canvas tab to sync schedule data.');
-                await this.loadSettings();
+                this.updateBlackbaudUI(true);
             } else {
                 this.showError('Connection failed: ' + (response?.error || 'Unknown error'));
+                this.updateBlackbaudUI(false);
             }
         } catch (error) {
             this.showError('Connection error: ' + error.message);
+            this.updateBlackbaudUI(false);
         } finally {
             this.hideLoading();
         }

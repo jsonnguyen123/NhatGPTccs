@@ -354,8 +354,18 @@ class BlackbaudAuthService {
 
     // 🛡️ FIX #4: Check if Blackbaud is connected (ask server)
     async isConnected() {
-        const local = await chrome.storage.local.get(['bb_auth_status']);
-        return local.bb_auth_status === 'authenticated';
+        try {
+            const token = await getCanvasTokenHelper();
+            if (!token) return false;
+            const res = await fetch(`${BACKEND_URL}/api/blackbaud/status`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) return false;
+            const data = await res.json();
+            return data.connected === true;
+        } catch {
+            return false;
+        }
     }
 }
 
@@ -868,10 +878,18 @@ class CanvasAIBackground {
                 await chrome.storage.local.remove(['refreshToken']);
                 console.log('🛡️ Removed legacy refresh token from local storage');
             }
+            // On startup, verify Blackbaud is still valid server-side
+            this.verifyBlackbaudOnStartup();
         } catch (e) {
             console.warn('Failed to clean legacy tokens:', e);
         }
-        
+        this.keepAlive();
+    }
+
+    keepAlive() {
+        setInterval(() => {
+            chrome.storage.session.get('_keepAlive');   // cheap no-op read
+        }, 20_000); // every 20s, before the 30s timeout
     }
 
     setupEventListeners() {
@@ -900,6 +918,19 @@ class CanvasAIBackground {
         chrome.storage.onChanged.addListener((changes, namespace) => {
             this.handleStorageChange(changes, namespace);
         });
+    }
+
+    async verifyBlackbaudOnStartup() {
+        try {
+            const connected = await this.blackbaudAuth.isConnected();
+            if (!connected) {
+                console.warn('[BB] Startup check: Blackbaud not connected or server lost tokens');
+            } else {
+                console.log('[BB] Startup check: Blackbaud ✅ verified');
+            }
+        } catch (err) {
+            console.warn('[BB] Startup check failed:', err.message);
+        }
     }
 
     async authenticatedFetch(url, options = {}) {
@@ -1177,6 +1208,10 @@ class CanvasAIBackground {
                     await this.handleWebSearch(request.data, sendResponse);
                     break;
 
+                case 'PING':
+                    sendResponse({ success: true });
+                    return false;
+
                 case 'FETCH_ANNOUNCEMENTS':
                     this.handleFetchAnnouncements(request, sendResponse);
                     return true;
@@ -1197,10 +1232,17 @@ class CanvasAIBackground {
                         });
                     }
                     break;
+                
+                case 'BLACKBAUD_PROXY':
+                    await this.handleBlackbaudRequest(request, sendResponse);
+                    return true;
 
                 case 'FETCH_BLACKBAUD_STUDENT_SCHEDULE':
                     try {
-                        const scheduleData = await this.fetchBlackbaudStudentScheduleData(request.referenceDate ? new Date(request.referenceDate) : new Date());
+                        const scheduleData = await this.fetchBlackbaudStudentScheduleData(
+                            request.referenceDate ? new Date(request.referenceDate) : new Date(),
+                            request.userId ?? null
+                        );
                         sendResponse({ success: true, data: scheduleData });
                     } catch (error) {
                         sendResponse({
@@ -1734,13 +1776,14 @@ class CanvasAIBackground {
     }
 
     /**
+     * @param {string} userId  - Resolved Blackbaud numeric user ID
      * @param {string} startDate
      * @param {string} endDate
      * @returns {string}
      */
-    buildBlackbaudStudentScheduleEndpoint(startDate, endDate) {
+    buildBlackbaudStudentScheduleEndpoint(userId, startDate, endDate) {
         const params = new URLSearchParams({
-            user_id: 'self',
+            user_id: userId,   // real numeric ID, not 'self'
             start_date: startDate,
             end_date: endDate
         });
@@ -1748,13 +1791,44 @@ class CanvasAIBackground {
     }
 
     /**
+     * Resolves the current student's Blackbaud user ID from cached Canvas data.
+     * Falls back to fetching from the Blackbaud /users/me endpoint.
+     * @returns {Promise<string|null>}
+     */
+    async getBlackbaudUserId() {
+        // Try cached Canvas data first — Blackbaud often shares the same numeric ID
+        const local = await chrome.storage.local.get(['blackbaudUserId', 'canvasData']);
+        if (local.blackbaudUserId) return String(local.blackbaudUserId);
+
+        try {
+            const data = await this.requestBlackbaudData({ endpoint: '/school/v1/users/me' });
+            console.log('[BB Debug] /users/me response:', JSON.stringify(data)); // 👈 add this
+            const userId = data?.id || data?.user_id || data?.UserId;
+            if (userId) {
+                await chrome.storage.local.set({ blackbaudUserId: String(userId) });
+                return String(userId);
+            }
+        } catch (err) {
+            console.warn('getBlackbaudUserId failed:', err.message);
+        }
+        return null;
+    }
+
+    /**
      * @param {Date} referenceDate
      * @returns {Promise<{entries:Array<{date:string,startTime:string,endTime:string,courseName:string,teacherName:string,room:string}>,startDate:string,endDate:string}>}
      */
-    async fetchBlackbaudStudentScheduleData(referenceDate) {
+    async fetchBlackbaudStudentScheduleData(referenceDate, resolvedUserId = null) {
         const range = this.getBlackbaudStudentScheduleDateRange(referenceDate);
+
+        // Use the ID passed from dashboard if available, otherwise resolve it
+        const userId = resolvedUserId ?? await this.getBlackbaudUserId();
+        if (!userId) {
+            throw new Error('Blackbaud user ID could not be resolved. Ensure Blackbaud is connected.');
+        }
+
         const rawData = await this.requestBlackbaudData({
-            endpoint: this.buildBlackbaudStudentScheduleEndpoint(range.startDate, range.endDate)
+            endpoint: this.buildBlackbaudStudentScheduleEndpoint(userId, range.startDate, range.endDate)
         });
 
         return {
