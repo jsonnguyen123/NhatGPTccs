@@ -9,8 +9,14 @@ class AcademicDashboard {
         this.lastUpdate = null;
         this.briefing = null;
         this.blackbaudUserId = null;
+        this.activeScheduleWeekOffset = 0;
+        this.scheduleWeekDefinitions = this.getScheduleWeekDefinitions(new Date());
+        this.scheduleWeekCache = {};
+        this.scheduleLoadErrorMessage = '';
         this.weeklyScheduleEntries = [];
         this.activeScheduleDayIndex = this.getInitialScheduleDayIndex(new Date());
+        this.weeklyMenuByDate = new Map();
+        this.menuDisplayDayCount = 7;
         this.selectedTarget = null;
         this.simulatorCache = new Map();
         this.simulatorRows = [];
@@ -31,11 +37,15 @@ class AcademicDashboard {
         this.renderCourseHealthGrid();
         this.renderRecentActivity();
         this.populateCourseSelector();
-        this.renderWeeklyScheduleSkeleton(this.getScheduleDayDefinitions(new Date()));
+        this.renderScheduleWeekButtons();
+        this.renderScheduleWeekRange();
+        this.renderWeeklyScheduleSkeleton(this.getScheduleDayDefinitions(this.getActiveScheduleReferenceDate()));
+        this.renderWeeklyMenuSkeleton(this.getMenuDayDefinitions(new Date(), this.menuDisplayDayCount));
         await Promise.all([
             this.loadAcademicBriefing(),
             this.initializeSimulator(),
-            this.loadWeeklySchedule()
+            this.loadWeeklySchedule(),
+            this.loadWeeklyMenu()
         ]);
     }
 
@@ -49,9 +59,12 @@ class AcademicDashboard {
         this.courseHealthGridEl = document.getElementById('course-health-grid');
         this.recentActivityListEl = document.getElementById('recent-activity-list');
         this.weeklyScheduleEl = document.getElementById('weekly-schedule');
+        this.scheduleWeekButtonsEl = document.getElementById('schedule-week-buttons');
+        this.scheduleWeekRangeEl = document.getElementById('schedule-week-range');
         this.schedulePrevDayEl = document.getElementById('schedule-prev-day');
         this.scheduleNextDayEl = document.getElementById('schedule-next-day');
         this.scheduleCurrentDayLabelEl = document.getElementById('schedule-current-day-label');
+        this.weeklyMenuEl = document.getElementById('weekly-menu');
         this.courseSelectorEl = document.getElementById('course-selector');
         this.resetSimulatorEl = document.getElementById('reset-simulator');
         this.simulatorOverallGradeEl = document.getElementById('simulator-overall-grade');
@@ -79,6 +92,13 @@ class AcademicDashboard {
         this.openSettingsEl.addEventListener('click', () => chrome.runtime.openOptionsPage());
         this.schedulePrevDayEl.addEventListener('click', () => this.changeWeeklyScheduleDay(-1));
         this.scheduleNextDayEl.addEventListener('click', () => this.changeWeeklyScheduleDay(1));
+        this.scheduleWeekButtonsEl.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-week-offset]');
+            if (!button) return;
+            const weekOffset = Number(button.dataset.weekOffset);
+            if (!Number.isInteger(weekOffset)) return;
+            void this.selectScheduleWeek(weekOffset);
+        });
     }
 
     async sendMessage(message, retries = 3) {
@@ -168,6 +188,14 @@ class AcademicDashboard {
         }
     }
 
+    /*
+     * PRE-WORK FINDINGS
+     * Menu source: extension/background.js uses SageDiningMenuService.fetchMenu(mealType, date), exposed to the dashboard through FETCH_DINING_MENU; it returns { success, date, meals: { breakfast|lunch|dinner: [{ name, category, meal }] } }.
+     * Schedule source: extension/background.js uses fetchBlackbaudStudentScheduleData(referenceDate, resolvedUserId), exposed through FETCH_BLACKBAUD_STUDENT_SCHEDULE; it returns { entries: [{ date, startTime, endTime, courseName, teacherName, room }], startDate, endDate }.
+     * Current week logic: dashboard getScheduleDayDefinitions(referenceDate) and background getBlackbaudStudentScheduleDateRange(referenceDate) both normalize the reference date back to Monday (Sunday maps to the prior Monday) and use a Monday-through-Friday range.
+     * Server note: backend/server.js defines the get_dining_menu tool contract and Blackbaud proxy route, but no dedicated dining menu HTTP route; the dashboard reuses the existing extension message flow instead of adding one.
+     */
+
     /**
      * @param {Date} referenceDate
      * @returns {number}
@@ -179,16 +207,79 @@ class AcademicDashboard {
 
     /**
      * @param {Date} referenceDate
-     * @returns {Array<{index:number,label:string,fullLabel:string,shortDate:string,isoDate:string,isToday:boolean}>}
+     * @param {number} weekOffset
+     * @returns {Date}
      */
-    getScheduleDayDefinitions(referenceDate) {
+    getWeekStartDate(referenceDate, weekOffset = 0) {
         const baseDate = new Date(referenceDate);
         baseDate.setHours(0, 0, 0, 0);
         const weekday = baseDate.getDay();
         const offsetFromMonday = weekday === 0 ? 6 : weekday - 1;
-        baseDate.setDate(baseDate.getDate() - offsetFromMonday);
+        baseDate.setDate(baseDate.getDate() - offsetFromMonday + (weekOffset * 7));
+        return baseDate;
+    }
 
-        const todayIsoDate = this.toIsoDate(new Date(referenceDate));
+    /**
+     * @param {Date} referenceDate
+     * @returns {Array<{offset:number,label:string,referenceDate:Date,startDate:Date,endDate:Date,buttonRange:string,headingRange:string}>}
+     */
+    getScheduleWeekDefinitions(referenceDate) {
+        const labels = ['This Week', 'Next Week', 'Week 3', 'Week 4'];
+        return Array.from({ length: 4 }, (_, offset) => {
+            const startDate = this.getWeekStartDate(referenceDate, offset);
+            const endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + 4);
+            return {
+                offset,
+                label: labels[offset],
+                referenceDate: new Date(startDate),
+                startDate,
+                endDate,
+                buttonRange: this.formatWeekRangeText(startDate, endDate, false),
+                headingRange: this.formatWeekRangeText(startDate, endDate, true)
+            };
+        });
+    }
+
+    /**
+     * @param {number} weekOffset
+     * @returns {{offset:number,label:string,referenceDate:Date,startDate:Date,endDate:Date,buttonRange:string,headingRange:string}}
+     */
+    getScheduleWeekDefinition(weekOffset) {
+        return this.scheduleWeekDefinitions[weekOffset] || this.scheduleWeekDefinitions[0];
+    }
+
+    /**
+     * @returns {Date}
+     */
+    getActiveScheduleReferenceDate() {
+        return this.getScheduleWeekDefinition(this.activeScheduleWeekOffset).referenceDate;
+    }
+
+    /**
+     * @param {Date} startDate
+     * @param {Date} endDate
+     * @param {boolean} includeYear
+     * @returns {string}
+     */
+    formatWeekRangeText(startDate, endDate, includeYear) {
+        const startMonth = startDate.toLocaleDateString('en-US', { month: 'short' });
+        const endMonth = endDate.toLocaleDateString('en-US', { month: 'short' });
+        const startDay = startDate.getDate();
+        const endDay = endDate.getDate();
+        const year = endDate.getFullYear();
+        const range = startMonth === endMonth
+            ? `${startMonth} ${startDay} – ${endDay}`
+            : `${startMonth} ${startDay} – ${endMonth} ${endDay}`;
+        return includeYear ? `${range}, ${year}` : range;
+    }
+
+    /**
+     * @param {Date} referenceDate
+     * @returns {Array<{index:number,label:string,fullLabel:string,shortDate:string,isoDate:string,isToday:boolean}>}
+     */
+    getScheduleDayDefinitions(referenceDate) {
+        const baseDate = this.getWeekStartDate(referenceDate);
         return Array.from({ length: 5 }, (_, index) => {
             const dayDate = new Date(baseDate);
             dayDate.setDate(baseDate.getDate() + index);
@@ -197,6 +288,28 @@ class AcademicDashboard {
                 index,
                 label: dayDate.toLocaleDateString('en-US', { weekday: 'short' }),
                 fullLabel: dayDate.toLocaleDateString('en-US', { weekday: 'long' }),
+                shortDate: dayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                isoDate,
+                isToday: isoDate === this.toIsoDate(new Date())
+            };
+        });
+    }
+
+    /**
+     * @param {Date} referenceDate
+     * @param {number} dayCount
+     * @returns {Array<{index:number,label:string,shortDate:string,isoDate:string,isToday:boolean}>}
+     */
+    getMenuDayDefinitions(referenceDate, dayCount) {
+        const baseDate = this.getWeekStartDate(referenceDate);
+        const todayIsoDate = this.toIsoDate(new Date());
+        return Array.from({ length: dayCount }, (_, index) => {
+            const dayDate = new Date(baseDate);
+            dayDate.setDate(baseDate.getDate() + index);
+            const isoDate = this.toIsoDate(dayDate);
+            return {
+                index,
+                label: dayDate.toLocaleDateString('en-US', { weekday: 'short' }),
                 shortDate: dayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
                 isoDate,
                 isToday: isoDate === todayIsoDate
@@ -219,10 +332,58 @@ class AcademicDashboard {
      * @returns {void}
      */
     changeWeeklyScheduleDay(offset) {
-        const nextIndex = Math.max(0, Math.min(4, this.activeScheduleDayIndex + offset));
+        const days = this.getScheduleDayDefinitions(this.getActiveScheduleReferenceDate());
+        const nextIndex = Math.max(0, Math.min(days.length - 1, this.activeScheduleDayIndex + offset));
         if (nextIndex === this.activeScheduleDayIndex) return;
         this.activeScheduleDayIndex = nextIndex;
+        if (this.scheduleLoadErrorMessage) {
+            this.renderWeeklyScheduleError(this.scheduleLoadErrorMessage, days);
+            return;
+        }
         this.renderWeeklySchedule(this.weeklyScheduleEntries);
+    }
+
+    /**
+     * @returns {void}
+     */
+    renderScheduleWeekButtons() {
+        this.scheduleWeekButtonsEl.innerHTML = this.scheduleWeekDefinitions.map(week => `
+            <button
+                type="button"
+                class="secondary-button schedule-week-button ${week.offset === this.activeScheduleWeekOffset ? 'is-active' : ''}"
+                data-week-offset="${week.offset}"
+                aria-pressed="${week.offset === this.activeScheduleWeekOffset ? 'true' : 'false'}"
+            >
+                <span class="schedule-week-button__label">${week.label}</span>
+                <span class="schedule-week-button__range">${week.buttonRange}</span>
+            </button>
+        `).join('');
+    }
+
+    /**
+     * @returns {void}
+     */
+    renderScheduleWeekRange() {
+        const activeWeek = this.getScheduleWeekDefinition(this.activeScheduleWeekOffset);
+        this.scheduleWeekRangeEl.textContent = `Week of ${activeWeek.headingRange}`;
+    }
+
+    /**
+     * @param {number} weekOffset
+     * @returns {Promise<void>}
+     */
+    async selectScheduleWeek(weekOffset) {
+        if (!Number.isInteger(weekOffset) || weekOffset < 0 || weekOffset >= this.scheduleWeekDefinitions.length) {
+            return;
+        }
+        if (weekOffset === this.activeScheduleWeekOffset && this.scheduleWeekCache[weekOffset]) {
+            return;
+        }
+        this.activeScheduleWeekOffset = weekOffset;
+        this.activeScheduleDayIndex = weekOffset === 0 ? this.getInitialScheduleDayIndex(new Date()) : 0;
+        this.renderScheduleWeekButtons();
+        this.renderScheduleWeekRange();
+        await this.loadWeeklySchedule(weekOffset);
     }
 
     /**
@@ -243,6 +404,7 @@ class AcademicDashboard {
      * @returns {void}
      */
     renderWeeklyScheduleSkeleton(days) {
+        this.scheduleLoadErrorMessage = '';
         this.weeklyScheduleEl.innerHTML = `
             <div class="weekly-schedule-grid" aria-busy="true">
                 ${days.map(day => `
@@ -269,21 +431,36 @@ class AcademicDashboard {
 
     /**
      * @param {string} message
+     * @param {Array<{index:number,label:string,fullLabel:string,shortDate:string,isoDate:string,isToday:boolean}>} days
      * @returns {void}
      */
-    renderWeeklyScheduleError(message) {
+    renderWeeklyScheduleError(message, days) {
+        this.scheduleLoadErrorMessage = message;
         this.weeklyScheduleEl.innerHTML = `<div class="empty-state schedule-inline-error">${this.escapeHtml(message)}</div>`;
         this.weeklyScheduleEl.setAttribute('aria-busy', 'false');
-        this.scheduleCurrentDayLabelEl.textContent = 'Unavailable';
-        this.schedulePrevDayEl.disabled = true;
-        this.scheduleNextDayEl.disabled = true;
+        this.updateWeeklyScheduleNavigation(days);
     }
 
     /**
-     * @param {Date} referenceDate
+     * @param {number} weekOffset
      * @returns {Promise<void>}
      */
-    async loadWeeklySchedule(referenceDate = new Date()) {
+    async loadWeeklySchedule(weekOffset = this.activeScheduleWeekOffset) {
+        const activeWeek = this.getScheduleWeekDefinition(weekOffset);
+        const days = this.getScheduleDayDefinitions(activeWeek.referenceDate);
+        this.activeScheduleWeekOffset = weekOffset;
+        this.renderScheduleWeekButtons();
+        this.renderScheduleWeekRange();
+
+        if (this.scheduleWeekCache[weekOffset]) {
+            this.scheduleLoadErrorMessage = '';
+            this.weeklyScheduleEntries = this.scheduleWeekCache[weekOffset];
+            this.renderWeeklySchedule(this.weeklyScheduleEntries);
+            return;
+        }
+
+        this.renderWeeklyScheduleSkeleton(days);
+
         try {
             // ── Resolve BB user ID (cached after first fetch) ──────────
             if (!this.blackbaudUserId) {
@@ -302,15 +479,16 @@ class AcademicDashboard {
 
             const response = await this.sendMessage({
                 type: 'FETCH_BLACKBAUD_STUDENT_SCHEDULE',
-                referenceDate: referenceDate.toISOString(),
+                referenceDate: activeWeek.referenceDate.toISOString(),
                 userId: this.blackbaudUserId
             });
             this.weeklyScheduleEntries = Array.isArray(response.data?.entries) ? response.data.entries : [];
+            this.scheduleWeekCache[weekOffset] = this.weeklyScheduleEntries;
             this.renderWeeklySchedule(this.weeklyScheduleEntries);
         } catch (error) {
             console.error('Dashboard: Failed to load weekly schedule', error);
             this.weeklyScheduleEntries = [];
-            this.renderWeeklyScheduleError('Weekly schedule is unavailable right now.');
+            this.renderWeeklyScheduleError('Weekly schedule is unavailable right now.', days);
         }
     }
 
@@ -319,7 +497,8 @@ class AcademicDashboard {
      * @returns {void}
      */
     renderWeeklySchedule(entries) {
-        const days = this.getScheduleDayDefinitions(new Date());
+        this.scheduleLoadErrorMessage = '';
+        const days = this.getScheduleDayDefinitions(this.getActiveScheduleReferenceDate());
         const groupedEntries = this.groupWeeklyScheduleEntries(entries, days);
 
         this.weeklyScheduleEl.innerHTML = `
@@ -425,6 +604,136 @@ class AcademicDashboard {
      */
     getWeeklyScheduleMetaLine(entry) {
         return [entry.teacherName, entry.room].filter(Boolean).join(' • ');
+    }
+
+    /**
+     * @param {Array<{index:number,label:string,shortDate:string,isoDate:string,isToday:boolean}>} days
+     * @returns {void}
+     */
+    renderWeeklyMenuSkeleton(days) {
+        this.weeklyMenuEl.innerHTML = `
+            <div class="menu-week-grid" aria-busy="true">
+                ${days.map(day => `
+                    <article class="schedule-day-column ${day.isToday ? 'schedule-day-column--today' : ''}">
+                        <div class="schedule-day-header">
+                            <h3>${day.label}</h3>
+                            <p class="meta-text">${day.shortDate}</p>
+                        </div>
+                        <div class="schedule-day-list">
+                            ${Array.from({ length: 3 }, () => `
+                                <div class="schedule-class-card schedule-class-card--skeleton" aria-hidden="true">
+                                    <div class="schedule-skeleton schedule-skeleton--title"></div>
+                                    <div class="schedule-skeleton schedule-skeleton--time"></div>
+                                    <div class="schedule-skeleton schedule-skeleton--meta"></div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </article>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    /**
+     * @returns {Promise<void>}
+     */
+    async loadWeeklyMenu() {
+        const requestedDays = this.getMenuDayDefinitions(new Date(), 7);
+        this.renderWeeklyMenuSkeleton(requestedDays);
+
+        try {
+            const responses = await Promise.all(requestedDays.map(day => this.sendMessage({
+                type: 'FETCH_DINING_MENU',
+                date: day.isoDate
+            })));
+
+            this.menuDisplayDayCount = this.getWeeklyMenuDayCount(responses);
+            this.weeklyMenuByDate = new Map(
+                requestedDays.slice(0, this.menuDisplayDayCount).map((day, index) => [day.isoDate, responses[index]?.data || null])
+            );
+            this.renderWeeklyMenu();
+        } catch (error) {
+            console.error('Dashboard: Failed to load weekly menu', error);
+            this.weeklyMenuEl.innerHTML = '<div class="empty-state schedule-inline-error">Menu unavailable. Try again later.</div>';
+            this.weeklyMenuEl.setAttribute('aria-busy', 'false');
+        }
+    }
+
+    /**
+     * @param {Array<{data?:{success?:boolean,meals?:Record<string, Array<{name:string,category:string,meal:string}>>}}>} responses
+     * @returns {number}
+     */
+    getWeeklyMenuDayCount(responses) {
+        const hasWeekendData = responses.slice(5).some(response => this.hasMenuData(response?.data));
+        return hasWeekendData ? 7 : 5;
+    }
+
+    /**
+     * @param {{success?:boolean,meals?:Record<string, Array<{name:string,category:string,meal:string}>>}|null|undefined} menuData
+     * @returns {boolean}
+     */
+    hasMenuData(menuData) {
+        if (!menuData?.success || !menuData.meals) return false;
+        return ['breakfast', 'lunch', 'dinner'].some(mealName => Array.isArray(menuData.meals[mealName]) && menuData.meals[mealName].length > 0);
+    }
+
+    /**
+     * @param {{success?:boolean,meals?:Record<string, Array<{name:string,category:string,meal:string}>>}|null|undefined} menuData
+     * @param {'breakfast'|'lunch'|'dinner'} mealName
+     * @returns {string[]}
+     */
+    getMenuEntrees(menuData, mealName) {
+        const entreePattern = /(entree|entrée|entrees|entrées|entre|main|grill|rotisserie)/i;
+        const mealEntries = Array.isArray(menuData?.meals?.[mealName]) ? menuData.meals[mealName] : [];
+        return mealEntries
+            .filter(item => entreePattern.test(String(item?.category || '')))
+            .map(item => String(item?.name || '').trim())
+            .filter(Boolean);
+    }
+
+    /**
+     * @returns {void}
+     */
+    renderWeeklyMenu() {
+        const days = this.getMenuDayDefinitions(new Date(), this.menuDisplayDayCount);
+        const mealLabels = [
+            ['breakfast', 'Breakfast'],
+            ['lunch', 'Lunch'],
+            ['dinner', 'Dinner']
+        ];
+
+        this.weeklyMenuEl.innerHTML = `
+            <div class="menu-week-grid" aria-busy="false">
+                ${days.map(day => {
+                    const menuData = this.weeklyMenuByDate.get(day.isoDate) || null;
+                    return `
+                        <article class="schedule-day-column menu-day-column ${day.isToday ? 'schedule-day-column--today' : ''}">
+                            <div class="schedule-day-header">
+                                <h3>${day.label}</h3>
+                                <p class="meta-text">${day.shortDate}</p>
+                            </div>
+                            ${this.hasMenuData(menuData)
+                                ? `<div class="menu-day-list">
+                                    ${mealLabels.map(([mealKey, label]) => {
+                                        const items = this.getMenuEntrees(menuData, mealKey);
+                                        return `
+                                            <section class="menu-meal-block">
+                                                <p class="menu-meal-label">${label}</p>
+                                                ${items.length > 0
+                                                    ? `<ul class="menu-meal-items">${items.map(item => `<li>${this.escapeHtml(item)}</li>`).join('')}</ul>`
+                                                    : '<p class="menu-placeholder">—</p>'
+                                                }
+                                            </section>
+                                        `;
+                                    }).join('')}
+                                </div>`
+                                : '<div class="schedule-empty-day menu-empty-day">No menu available</div>'
+                            }
+                        </article>
+                    `;
+                }).join('')}
+            </div>
+        `;
     }
 
     renderGradeTrends() {
