@@ -432,6 +432,11 @@ const GEMINI_TOOL_DECLARATIONS = [
                             type: "string",
                             enum: ["recent", "missing", "low", "high", "average", "all"],
                             description: "Filter type: 'recent' for latest grades, 'missing' for ungraded, 'low' for worst scores, 'high' for best, 'average' for overall average."
+                        },
+                        trimester: {
+                            type: "string",
+                            enum: ["1", "2", "3"],
+                            description: "Which trimester to fetch grades for (1, 2, or 3). Leave empty to use the current trimester automatically. The school year has 3 trimesters: T1 (Aug–Nov), T2 (Dec 1–Mar 14), T3 (Mar 15–end of year)."
                         }
                     }
                 }
@@ -578,6 +583,8 @@ function buildSystemInstruction(canvasData) {
     instruction += `6. NEVER search for inappropriate, violent, sexual, or harmful content.\n`;
     instruction += `7. When the student asks about their grades, assignments, or courses, ALWAYS call the appropriate tool — do NOT say you don't have access. The tools will fetch the data.\n`;
     instruction += `8. When you receive dining menu data, format it by meal. For each meal, **bold the "Entrees" or "Entrées" section** and list those items prominently at the top. Use 🍖 emoji next to entree items so they stand out.\n`;
+    instruction += `9. When get_grades returns an "unavailableCourses" list, those courses have assignments this trimester but the instructor has not posted any scores yet. Display them as "Grade unavailable for this trimester" — NEVER show 0% or N/A for them.\n`;
+
 
     if (canvasData) {
         instruction += `\n\n═══ STUDENT'S CANVAS DATA (from their active session) ═══\n`;

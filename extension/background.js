@@ -4048,15 +4048,39 @@ class CanvasAIBackground {
             }
     
             if (toolName === 'get_grades') {
+                const triLabel = toolResult.trimesterLabel ? ` (${toolResult.trimesterLabel})` : '';
                 if (Array.isArray(toolResult)) {
-                    let text = `📊 **Your Grades**:\n\n`;
+                    let text = `📊 **Your Grades**${triLabel}:\n\n`;
                     toolResult.forEach(g => {
                         text += `• **${g.courseName || g.name}**: ${g.grade || g.score || 'N/A'}${g.letterGrade ? ` (${g.letterGrade})` : ''}\n`;
                     });
                     return text;
                 }
+                // Build per-course averages from raw grade entries
+                if (toolResult.grades && Array.isArray(toolResult.grades)) {
+                    const byCourse = {};
+                    toolResult.grades.forEach(g => {
+                        if (!byCourse[g.courseName]) byCourse[g.courseName] = [];
+                        byCourse[g.courseName].push(g);
+                    });
+                    let text = `📊 **Your Grades**${triLabel}:\n\n`;
+                    for (const [courseName, cGrades] of Object.entries(byCourse)) {
+                        const scored = cGrades.filter(g => g.percentage != null);
+                        if (scored.length === 0) continue;
+                        const avg = Math.round(scored.reduce((s, g) => s + g.percentage, 0) / scored.length);
+                        const emoji = avg >= 90 ? '🌟' : avg >= 80 ? '✅' : avg >= 70 ? '🟡' : '🔴';
+                        text += `${emoji} **${courseName}**: ${avg}%\n`;
+                    }
+                    if (toolResult.unavailableCourses?.length > 0) {
+                        text += `\n`;
+                        toolResult.unavailableCourses.forEach(name => {
+                            text += `🔒 **${name}**: Grade unavailable for this trimester\n`;
+                        });
+                    }
+                    return text;
+                }
                 if (toolResult.courses) {
-                    let text = `📊 **Your Grades**:\n\n`;
+                    let text = `📊 **Your Grades**${triLabel}:\n\n`;
                     toolResult.courses.forEach(c => {
                         text += `• **${c.name}**: ${c.grade || 'N/A'}%${c.letterGrade ? ` (${c.letterGrade})` : ''}\n`;
                     });
@@ -4206,26 +4230,75 @@ class CanvasAIBackground {
                 const cd = stored.canvasData || {};
                 let grades = cd.assignmentGrades || [];
                 const courses = cd.courses || [];
-                
+
+                // ─── Trimester detection helpers ───────────────────────────
+                const getTrimesterNum = (dateStr) => {
+                    if (!dateStr) return null;
+                    const d = new Date(dateStr);
+                    if (isNaN(d)) return null;
+                    if (globalThis.TrimesterUtils?.getTrimesterForDate) {
+                        return globalThis.TrimesterUtils.getTrimesterForDate(d)?.trimester ?? null;
+                    }
+                    // Inline fallback if TrimesterUtils unavailable
+                    const month = d.getMonth() + 1;
+                    const day  = d.getDate();
+                    if (month >= 8 && month <= 11) return 1;
+                    if (month === 12 || (month <= 3 && !(month === 3 && day >= 15))) return 2;
+                    return 3;
+                };
+                const getCurrentTrimesterNum = () => {
+                    if (globalThis.TrimesterUtils?.getCurrentTrimester) {
+                        return globalThis.TrimesterUtils.getCurrentTrimester(new Date())?.trimester ?? 3;
+                    }
+                    return getTrimesterNum(new Date().toISOString()) ?? 3;
+                };
+
+                const targetTri = args.trimester ? parseInt(args.trimester) : getCurrentTrimesterNum();
+                const triLabel  = `Trimester ${targetTri}`;
+
+                // ─── Filter to target trimester ────────────────────────────
+                // Prefer the pre-tagged `trimester` field (set by handleFetchGrades);
+                // fall back to date-based detection on dueAt for sync-path grades.
+                const trimesterGrades = grades.filter(g => {
+                    if (g.trimester != null) return g.trimester === targetTri;
+                    return getTrimesterNum(g.dueAt) === targetTri;
+                });
+
+                // ─── Detect courses with no posted grades this trimester ───
+                // These should surface as "unavailable", not 0% or N/A.
+                const coursePresence = {};
+                trimesterGrades.forEach(g => {
+                    if (!coursePresence[g.courseName])
+                        coursePresence[g.courseName] = { total: 0, graded: 0 };
+                    coursePresence[g.courseName].total++;
+                    if (g.score != null) coursePresence[g.courseName].graded++;
+                });
+                const unavailableCourses = Object.entries(coursePresence)
+                    .filter(([, v]) => v.total > 0 && v.graded === 0)
+                    .map(([name]) => name);
+
+                grades = trimesterGrades;
+                // ───────────────────────────────────────────────────────────
+
                 // Apply course filter
                 if (args.course_name) {
                     const cn = args.course_name.toLowerCase();
-                    const matchedCourse = courses.find(c => 
+                    const matchedCourse = courses.find(c =>
                         (c.name || '').toLowerCase().includes(cn) ||
                         (c.subject || '').toLowerCase().includes(cn)
                     );
                     if (matchedCourse) {
-                        grades = grades.filter(g => 
+                        grades = grades.filter(g =>
                             String(g.courseId) === String(matchedCourse.id)
                         );
                     }
                 }
-                
+
                 // Apply filter type
                 switch (args.filter) {
                     case 'recent':
                         grades = grades
-                            .filter(g => g.gradedAt)
+                            .filter(g => g.gradedAt && g.score != null)
                             .sort((a, b) => new Date(b.gradedAt) - new Date(a.gradedAt))
                             .slice(0, 15);
                         break;
@@ -4245,21 +4318,23 @@ class CanvasAIBackground {
                             .slice(0, 15);
                         break;
                     default:
-                        // Return recent by default, sorted newest first
                         grades = grades
                             .filter(g => g.score != null)
                             .sort((a, b) => new Date(b.gradedAt || b.dueAt || 0) - new Date(a.gradedAt || a.dueAt || 0))
                             .slice(0, 25);
                 }
-                
+
                 return {
                     success: true,
-                    grades: grades,
+                    trimester: targetTri,
+                    trimesterLabel: triLabel,
+                    unavailableCourses,
+                    grades,
                     totalGraded: (cd.assignmentGrades || []).filter(g => g.score != null).length,
-                    courses: courses.map(c => ({ 
-                        name: c.name, 
-                        grade: c.grade, 
-                        letterGrade: c.letterGrade 
+                    courses: courses.map(c => ({
+                        name: c.name,
+                        grade: c.grade,
+                        letterGrade: c.letterGrade
                     }))
                 };
             }
