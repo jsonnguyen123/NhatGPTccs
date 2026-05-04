@@ -2424,7 +2424,8 @@ class CanvasAIBackground {
                             trimesterLabel = matchedPeriod.trimesterInfo.label;
                         } else {
                             // Trimester assignment must be based on the assignment due date only.
-                            // Missing due dates stay unresolved here and are mapped at render time.
+                            // Missing due dates stay unresolved here and are mapped in dashboard.js
+                            // and canvas_tools.js via TrimesterUtils.filterByTrimester at render time.
                             const dateStr = assignment.due_at;
                             if (dateStr) {
                                 const triInfo = this.getTrimesterForDate(dateStr);

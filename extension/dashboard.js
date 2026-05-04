@@ -916,6 +916,12 @@ class AcademicDashboard {
         return possible > 0 ? (earned / possible) * 100 : null;
     }
 
+    getScoredEntries(entries) {
+        return entries
+            .filter(grade => grade.score !== null && !grade.excused && Number.isFinite(grade.percentage))
+            .sort((firstGrade, secondGrade) => this.getGradeSortTimestamp(firstGrade) - this.getGradeSortTimestamp(secondGrade));
+    }
+
     renderCourseHealthGrid() {
         const courses = this.canvasData?.courses || [];
         const assignments = this.filterItemsBySelectedTrimester(
@@ -932,9 +938,7 @@ class AcademicDashboard {
                 .filter(assignment => String(assignment.courseId) === String(course.id) && assignment.dueDate && new Date(assignment.dueDate) >= new Date())
                 .sort((firstAssignment, secondAssignment) => new Date(firstAssignment.dueDate) - new Date(secondAssignment.dueDate))[0];
             const trimesterEntries = this.getTrimesterGradeEntries(course.id);
-            const courseGrades = trimesterEntries
-                .filter(grade => grade.score !== null && !grade.excused && Number.isFinite(grade.percentage))
-                .sort((firstGrade, secondGrade) => this.getGradeSortTimestamp(firstGrade) - this.getGradeSortTimestamp(secondGrade));
+            const courseGrades = this.getScoredEntries(trimesterEntries);
             const trimesterGrade = this.calculateGradeFromEntries(trimesterEntries);
             const latestValues = courseGrades.slice(-2).map(grade => Number(grade.percentage));
             const trendDelta = latestValues.length === 2 ? latestValues[1] - latestValues[0] : 0;
@@ -1065,7 +1069,7 @@ class AcademicDashboard {
         this.remainingWorkSummaryEl.textContent = `${Math.round(remainingPoints)} pts across ${gradeableRows.filter(row => row.isPending).length} assignments`;
 
         this.simulatorTableBodyEl.innerHTML = gradeableRows.map(row => {
-            const contribution = this.calculateContribution(row, this.simulatorRows);
+            const contribution = this.calculateContribution(row, gradeableRows);
             const isEdited = !row.isPending && row.actualEarned != null && Number(row.earned) !== Number(row.actualEarned);
             const gradePercent = Number.isFinite(Number(row.earned)) && Number(row.possible) > 0
                 ? `${((Number(row.earned) / Number(row.possible)) * 100).toFixed(1)}%`
@@ -1313,9 +1317,7 @@ class AcademicDashboard {
     }
 
     getChartGradeEntries(courseId) {
-        return this.getTrimesterGradeEntries(courseId)
-            .filter(grade => grade.score !== null && !grade.excused && Number.isFinite(grade.percentage))
-            .sort((firstGrade, secondGrade) => this.getGradeSortTimestamp(firstGrade) - this.getGradeSortTimestamp(secondGrade));
+        return this.getScoredEntries(this.getTrimesterGradeEntries(courseId));
     }
 
     normalizeGradeEntry(grade) {
