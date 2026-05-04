@@ -888,9 +888,9 @@ class AcademicDashboard {
         return rows.filter(row => Number(row.possible) > 0);
     }
 
-    formatTrimesterGradeDisplay(grade) {
+    getTrimesterGradeDisplayText(grade) {
         if (grade === 'unavailable') {
-            return '<span class="meta-text">Grade unavailable for this trimester</span>';
+            return 'Grade unavailable for this trimester';
         }
         if (!Number.isFinite(Number(grade))) {
             return '--';
@@ -953,7 +953,7 @@ class AcademicDashboard {
                         </div>
                         <span class="${trendClass}">${trendArrow}</span>
                     </div>
-                    <div class="health-grade">${this.formatTrimesterGradeDisplay(trimesterGrade)}</div>
+                    <div class="health-grade">${this.escapeHtml(this.getTrimesterGradeDisplayText(trimesterGrade))}</div>
                     <p class="meta-text ${trendClass}">${trendDelta === 0 ? 'Stable trend' : `${trendDelta > 0 ? 'Up' : 'Down'} ${Math.abs(trendDelta).toFixed(0)} pts`}</p>
                     <p class="meta-text" style="margin-top: 10px;">${this.escapeHtml(deadlineText)}</p>
                 </article>
@@ -1059,7 +1059,7 @@ class AcademicDashboard {
             .filter(row => row.isPending)
             .reduce((sum, row) => sum + Number(row.possible || 0), 0);
 
-        this.simulatorOverallGradeEl.innerHTML = this.formatTrimesterGradeDisplay(
+        this.simulatorOverallGradeEl.textContent = this.getTrimesterGradeDisplayText(
             Number.isFinite(overallGrade) ? overallGrade : 'unavailable'
         );
         this.remainingWorkSummaryEl.textContent = `${Math.round(remainingPoints)} pts across ${gradeableRows.filter(row => row.isPending).length} assignments`;
@@ -1108,7 +1108,7 @@ class AcademicDashboard {
     }
 
     renderSimulatorPlaceholder(message, overallText = '--') {
-        this.simulatorOverallGradeEl.innerHTML = this.escapeHtml(overallText);
+        this.simulatorOverallGradeEl.textContent = overallText;
         this.remainingWorkSummaryEl.textContent = '--';
         this.simulatorTableBodyEl.innerHTML = `<tr><td colspan="7"><div class="empty-state">${this.escapeHtml(message)}</div></td></tr>`;
         this.targetGradeOutputEl.textContent = 'Select a target grade to calculate what you need on remaining work.';
