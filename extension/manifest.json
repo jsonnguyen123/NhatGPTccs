@@ -42,6 +42,7 @@
       "matches": ["https://*.instructure.com/*"],
       "js": [
         "agent_config.js",      
+        "trimester_utils.js",
         "canvas_tools.js",            
         "agent_manager.js",     
         "auth.js",                                 

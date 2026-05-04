@@ -288,30 +288,11 @@ class GradeAnalyzerTool extends CanvasTool {
     // ─── TRIMESTER HELPERS (mirrors background.js logic) ──────────
 
     getTrimesterForDate(date) {
-        const d = new Date(date);
-        if (isNaN(d.getTime())) return null;
-        const month = d.getMonth();
-        const day = d.getDate();
-        const year = d.getFullYear();
-
-        if ((month >= 2 && month <= 4) || (month === 5 && day <= 15)) {
-            return { trimester: 3, label: 'Trimester 3', academicYear: `${year - 1}-${year}` };
-        }
-        if (month === 11 || month === 0 || month === 1) {
-            const acadYear = month === 11 ? year : year - 1;
-            return { trimester: 2, label: 'Trimester 2', academicYear: `${acadYear}-${acadYear + 1}` };
-        }
-        if ((month === 7 && day >= 20) || (month >= 8 && month <= 10)) {
-            return { trimester: 1, label: 'Trimester 1', academicYear: `${year}-${year + 1}` };
-        }
-        if (month >= 5) {
-            return { trimester: 3, label: 'Trimester 3 (summer)', academicYear: `${year - 1}-${year}` };
-        }
-        return { trimester: 2, label: 'Trimester 2', academicYear: `${year - 1}-${year}` };
+        return globalThis.TrimesterUtils?.getTrimesterForDate(date) || null;
     }
 
     getCurrentTrimester() {
-        return this.getTrimesterForDate(new Date());
+        return globalThis.TrimesterUtils?.getCurrentTrimester(new Date()) || this.getTrimesterForDate(new Date());
     }
 
     /**
@@ -326,17 +307,10 @@ class GradeAnalyzerTool extends CanvasTool {
      * Filter grades to a specific trimester number (1, 2, or 3).
      */
     filterByTrimester(grades, trimesterNum) {
-        return grades.filter(g => {
-            // Prefer Canvas grading-period-derived trimester (most accurate)
-            if (g.trimester != null) {
-                return g.trimester === trimesterNum;
-            }
-            // Fall back to date-based detection
-            const dateStr = this.getGradeDate(g);
-            if (!dateStr) return false;
-            const info = this.getTrimesterForDate(dateStr);
-            return info && info.trimester === trimesterNum;
-        });
+        return globalThis.TrimesterUtils?.filterByTrimester(grades, trimesterNum, {
+            currentDate: new Date(),
+            getDate: (grade, currentDate) => grade?.dueAt ?? currentDate
+        }) || [];
     }
 
     /**
