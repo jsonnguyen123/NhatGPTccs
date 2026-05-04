@@ -96,6 +96,11 @@
                     </div>
                     <div class="simulator-controls">
                         <select id="course-selector" class="course-selector"></select>
+                        <div id="trimester-button-group" class="target-button-group" aria-label="Select trimester">
+                            <button class="target-button" data-trimester="T1">T1</button>
+                            <button class="target-button" data-trimester="T2">T2</button>
+                            <button class="target-button" data-trimester="T3">T3</button>
+                        </div>
                         <button id="reset-simulator" class="secondary-button">Reset to Actual Grades</button>
                     </div>
                 </div>
@@ -161,6 +166,7 @@
     </div>
 
     <script src="theme-manager.js"></script>
+    <script src="trimester_utils.js"></script>
     <script src="canvas_tools.js"></script>
     <script src="dashboard.js"></script>
 </body>

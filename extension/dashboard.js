@@ -2,6 +2,9 @@ const MAX_BINARY_SEARCH_ITERATIONS = 25;
 const SPARKLINE_VERTICAL_PADDING = 12;
 const SPARKLINE_OFFSET = 6;
 const DASHBOARD_DEBUG = false;
+// Deterministic fallback if shared trimester detection is temporarily unavailable.
+const DEFAULT_TRIMESTER_CODE = 'T3';
+const NO_GRADEABLE_TRIMESTER_MESSAGE = 'No gradeable assignments in this trimester';
 
 class AcademicDashboard {
     constructor() {
@@ -26,6 +29,8 @@ class AcademicDashboard {
         this.toolManager = typeof window.ToolManager === 'function' ? new window.ToolManager() : null;
         this.gradeAnalyzerTool = this.toolManager?.getTool('gradeAnalyzer') || null;
         this.hasLoggedGradeAnalyzerFallback = false;
+        this.currentTrimesterInfo = this.getTrimesterInfo(new Date());
+        this.selectedTrimester = this.currentTrimesterInfo?.code || DEFAULT_TRIMESTER_CODE;
         this.init();
     }
 
@@ -39,6 +44,7 @@ class AcademicDashboard {
         this.renderCourseHealthGrid();
         this.renderRecentActivity();
         this.populateCourseSelector();
+        this.updateActiveTrimesterButtons();
         this.renderScheduleWeekButtons();
         this.renderScheduleWeekRange();
         this.renderWeeklyScheduleSkeleton(this.getScheduleDayDefinitions(this.getActiveScheduleReferenceDate()));
@@ -69,6 +75,7 @@ class AcademicDashboard {
         this.weeklyMenuEl = document.getElementById('weekly-menu');
         this.courseSelectorEl = document.getElementById('course-selector');
         this.resetSimulatorEl = document.getElementById('reset-simulator');
+        this.trimesterButtonGroupEl = document.getElementById('trimester-button-group');
         this.simulatorOverallGradeEl = document.getElementById('simulator-overall-grade');
         this.remainingWorkSummaryEl = document.getElementById('remaining-work-summary');
         this.simulatorTableBodyEl = document.getElementById('simulator-table-body');
@@ -81,6 +88,11 @@ class AcademicDashboard {
     bindEvents() {
         this.courseSelectorEl.addEventListener('change', () => this.handleCourseSelection());
         this.resetSimulatorEl.addEventListener('click', () => this.resetSimulator());
+        this.trimesterButtonGroupEl.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-trimester]');
+            if (!button) return;
+            this.handleTrimesterSelection(button.dataset.trimester);
+        });
         this.targetButtonGroupEl.addEventListener('click', (event) => {
             const button = event.target.closest('.target-button');
             if (!button) return;
@@ -836,9 +848,86 @@ class AcademicDashboard {
         return normalized;
     }
 
+    getTrimesterInfo(date) {
+        return globalThis.TrimesterUtils?.getTrimesterForDate(date)
+            || this.gradeAnalyzerTool?.getTrimesterForDate?.(date)
+            || null;
+    }
+
+    filterItemsBySelectedTrimester(items, getDate) {
+        return globalThis.TrimesterUtils?.filterByTrimester(items, this.selectedTrimester, {
+            currentDate: new Date(),
+            getDate
+        }) || [...(items || [])];
+    }
+
+    updateActiveTrimesterButtons() {
+        if (!this.trimesterButtonGroupEl) return;
+        [...this.trimesterButtonGroupEl.querySelectorAll('[data-trimester]')].forEach(button => {
+            button.classList.toggle('active', button.dataset.trimester === this.selectedTrimester);
+        });
+    }
+
+    handleTrimesterSelection(trimesterCode) {
+        const resolvedTrimester = globalThis.TrimesterUtils?.resolveTrimesterCode(trimesterCode) || trimesterCode;
+        if (!resolvedTrimester || resolvedTrimester === this.selectedTrimester) return;
+        this.selectedTrimester = resolvedTrimester;
+        this.updateActiveTrimesterButtons();
+        this.renderGradeTrends();
+        this.renderCourseHealthGrid();
+        this.resetSimulator();
+    }
+
+    getSimulatorRowsForSelectedTrimester(meta = this.simulatorMeta) {
+        if (!meta?.rows) return [];
+        return this.filterItemsBySelectedTrimester(meta.rows, (row, currentDate) => row?.dueDate || currentDate)
+            .map(row => ({ ...row }));
+    }
+
+    getGradeableRows(rows) {
+        return rows.filter(row => Number(row.possible) > 0);
+    }
+
+    getTrimesterGradeDisplayText(grade) {
+        if (grade === 'unavailable') {
+            return 'Grade unavailable for this trimester';
+        }
+        if (!Number.isFinite(Number(grade))) {
+            return '--';
+        }
+        return `${Number(grade).toFixed(1)}%`;
+    }
+
+    calculateGradeFromEntries(entries) {
+        const rows = entries
+            .filter(entry => !entry.excused && Number(entry.pointsPossible) > 0)
+            .map(entry => ({
+                earned: entry.score,
+                possible: entry.pointsPossible
+            }));
+
+        if (rows.length === 0) return null;
+
+        const gradedRows = rows.filter(row => Number.isFinite(Number(row.earned)));
+        if (gradedRows.length === 0) return 'unavailable';
+
+        const earned = gradedRows.reduce((sum, row) => sum + Number(row.earned), 0);
+        const possible = gradedRows.reduce((sum, row) => sum + Number(row.possible), 0);
+        return possible > 0 ? (earned / possible) * 100 : null;
+    }
+
+    getScoredEntries(entries) {
+        return entries
+            .filter(grade => grade.score !== null && !grade.excused && Number.isFinite(grade.percentage))
+            .sort((firstGrade, secondGrade) => this.getGradeSortTimestamp(firstGrade) - this.getGradeSortTimestamp(secondGrade));
+    }
+
     renderCourseHealthGrid() {
         const courses = this.canvasData?.courses || [];
-        const assignments = this.canvasData?.assignments || [];
+        const assignments = this.filterItemsBySelectedTrimester(
+            this.canvasData?.assignments || [],
+            (assignment, currentDate) => assignment?.dueDate || currentDate
+        );
         if (courses.length === 0) {
             this.courseHealthGridEl.innerHTML = '<div class="empty-state">No courses are available yet.</div>';
             return;
@@ -848,7 +937,9 @@ class AcademicDashboard {
             const nearestAssignment = assignments
                 .filter(assignment => String(assignment.courseId) === String(course.id) && assignment.dueDate && new Date(assignment.dueDate) >= new Date())
                 .sort((firstAssignment, secondAssignment) => new Date(firstAssignment.dueDate) - new Date(secondAssignment.dueDate))[0];
-            const courseGrades = this.getChartGradeEntries(course.id);
+            const trimesterEntries = this.getTrimesterGradeEntries(course.id);
+            const courseGrades = this.getScoredEntries(trimesterEntries);
+            const trimesterGrade = this.calculateGradeFromEntries(trimesterEntries);
             const latestValues = courseGrades.slice(-2).map(grade => Number(grade.percentage));
             const trendDelta = latestValues.length === 2 ? latestValues[1] - latestValues[0] : 0;
             const trendClass = trendDelta > 1 ? 'trend-up' : trendDelta < -1 ? 'trend-down' : 'trend-flat';
@@ -866,7 +957,7 @@ class AcademicDashboard {
                         </div>
                         <span class="${trendClass}">${trendArrow}</span>
                     </div>
-                    <div class="health-grade">${Number.isFinite(Number(course.grade)) ? `${Math.round(Number(course.grade))}%` : '--'}</div>
+                    <div class="health-grade">${this.escapeHtml(this.getTrimesterGradeDisplayText(trimesterGrade))}</div>
                     <p class="meta-text ${trendClass}">${trendDelta === 0 ? 'Stable trend' : `${trendDelta > 0 ? 'Up' : 'Down'} ${Math.abs(trendDelta).toFixed(0)} pts`}</p>
                     <p class="meta-text" style="margin-top: 10px;">${this.escapeHtml(deadlineText)}</p>
                 </article>
@@ -945,32 +1036,40 @@ class AcademicDashboard {
 
         const cached = this.simulatorCache.get(courseId);
         this.simulatorMeta = cached;
-        this.simulatorRows = cached.rows.map(row => ({ ...row }));
+        this.simulatorRows = this.getSimulatorRowsForSelectedTrimester(cached);
         this.renderSimulator();
     }
 
     resetSimulator() {
         if (!this.simulatorMeta) return;
-        this.simulatorRows = this.simulatorMeta.rows.map(row => ({ ...row }));
+        this.simulatorRows = this.getSimulatorRowsForSelectedTrimester(this.simulatorMeta);
         this.renderSimulator();
     }
 
     renderSimulator() {
-        if (!this.simulatorMeta || this.simulatorRows.length === 0) {
+        if (!this.simulatorMeta) {
             this.renderSimulatorPlaceholder('No assignment data is available for this course.');
             return;
         }
 
+        const gradeableRows = this.getGradeableRows(this.simulatorRows);
+        if (gradeableRows.length === 0) {
+            this.renderSimulatorPlaceholder(NO_GRADEABLE_TRIMESTER_MESSAGE, NO_GRADEABLE_TRIMESTER_MESSAGE);
+            return;
+        }
+
         const overallGrade = this.calculateOverallGrade(this.simulatorRows);
-        const remainingPoints = this.simulatorRows
+        const remainingPoints = gradeableRows
             .filter(row => row.isPending)
             .reduce((sum, row) => sum + Number(row.possible || 0), 0);
 
-        this.simulatorOverallGradeEl.textContent = Number.isFinite(overallGrade) ? `${overallGrade.toFixed(1)}%` : '--';
-        this.remainingWorkSummaryEl.textContent = `${Math.round(remainingPoints)} pts across ${this.simulatorRows.filter(row => row.isPending).length} assignments`;
+        this.simulatorOverallGradeEl.textContent = this.getTrimesterGradeDisplayText(
+            Number.isFinite(overallGrade) ? overallGrade : 'unavailable'
+        );
+        this.remainingWorkSummaryEl.textContent = `${Math.round(remainingPoints)} pts across ${gradeableRows.filter(row => row.isPending).length} assignments`;
 
-        this.simulatorTableBodyEl.innerHTML = this.simulatorRows.map(row => {
-            const contribution = this.calculateContribution(row, this.simulatorRows);
+        this.simulatorTableBodyEl.innerHTML = gradeableRows.map(row => {
+            const contribution = this.calculateContribution(row, gradeableRows);
             const isEdited = !row.isPending && row.actualEarned != null && Number(row.earned) !== Number(row.actualEarned);
             const gradePercent = Number.isFinite(Number(row.earned)) && Number(row.possible) > 0
                 ? `${((Number(row.earned) / Number(row.possible)) * 100).toFixed(1)}%`
@@ -1012,8 +1111,8 @@ class AcademicDashboard {
         this.updateTargetGradeOutput();
     }
 
-    renderSimulatorPlaceholder(message) {
-        this.simulatorOverallGradeEl.textContent = '--';
+    renderSimulatorPlaceholder(message, overallText = '--') {
+        this.simulatorOverallGradeEl.textContent = overallText;
         this.remainingWorkSummaryEl.textContent = '--';
         this.simulatorTableBodyEl.innerHTML = `<tr><td colspan="7"><div class="empty-state">${this.escapeHtml(message)}</div></td></tr>`;
         this.targetGradeOutputEl.textContent = 'Select a target grade to calculate what you need on remaining work.';
@@ -1209,13 +1308,16 @@ class AcademicDashboard {
         });
     }
 
-    getChartGradeEntries(courseId) {
+    getTrimesterGradeEntries(courseId) {
         const grades = Array.isArray(this.canvasData?.assignmentGrades) ? this.canvasData.assignmentGrades : [];
-        return grades
-            .filter(grade => String(grade.courseId) === String(courseId))
-            .map(grade => this.normalizeGradeEntry(grade))
-            .filter(grade => grade.score !== null && !grade.excused && Number.isFinite(grade.percentage))
-            .sort((firstGrade, secondGrade) => this.getGradeSortTimestamp(firstGrade) - this.getGradeSortTimestamp(secondGrade));
+        return this.filterItemsBySelectedTrimester(
+            grades.filter(grade => String(grade.courseId) === String(courseId)),
+            (grade, currentDate) => grade?.dueAt ?? currentDate
+        ).map(grade => this.normalizeGradeEntry(grade));
+    }
+
+    getChartGradeEntries(courseId) {
+        return this.getScoredEntries(this.getTrimesterGradeEntries(courseId));
     }
 
     normalizeGradeEntry(grade) {

@@ -1,3 +1,5 @@
+importScripts('trimester_utils.js');
+
 // Handles extension lifecycle, data management, and API communication
 class OAuthService {
     constructor() {
@@ -1516,37 +1518,7 @@ class CanvasAIBackground {
 
 
     getTrimesterForDate(date) {
-        const d = new Date(date);
-        if (isNaN(d.getTime())) return null;
-
-        const month = d.getMonth(); // 0-indexed (0=Jan, 11=Dec)
-        const day = d.getDate();
-        const year = d.getFullYear();
-
-        // Mar 1 – Jun 15 → T3
-        if ((month >= 2 && month <= 4) || (month === 5 && day <= 25)) {
-            // academic year started previous Aug
-            return { trimester: 3, label: 'Trimester 3', academicYear: `${year - 1}-${year}` };
-        }
-
-        // Dec 1 – Feb 28/29 → T2
-        if (month === 11 || month === 0 || month === 1) {
-            const acadYear = month === 11 ? year : year - 1;
-            return { trimester: 2, label: 'Trimester 2', academicYear: `${acadYear}-${acadYear + 1}` };
-        }
-
-        // Aug 20 – Nov 30 → T1
-        if ((month === 7 && day >= 20) || (month >= 8 && month <= 10)) {
-            return { trimester: 1, label: 'Trimester 1', academicYear: `${year}-${year + 1}` };
-        }
-
-        // Summer / early Aug / late Jun → closest trimester
-        if (month >= 5) {
-            // Jun 16 – Aug 19 → between T3 end and T1 start
-            return { trimester: 3, label: 'Trimester 3 (summer)', academicYear: `${year - 1}-${year}` };
-        }
-
-        return { trimester: 2, label: 'Trimester 2', academicYear: `${year - 1}-${year}` };
+        return globalThis.TrimesterUtils?.getTrimesterForDate(date) || null;
     }
 
     getCurrentTrimester() {
@@ -2451,7 +2423,10 @@ class CanvasAIBackground {
                             trimesterNum = matchedPeriod.trimesterInfo.trimester;
                             trimesterLabel = matchedPeriod.trimesterInfo.label;
                         } else {
-                            const dateStr = assignment.due_at || sub.graded_at || sub.submitted_at;
+                            // Trimester assignment must be based on the assignment due date only.
+                            // Missing due dates stay unresolved here and are mapped in dashboard.js
+                            // and canvas_tools.js via TrimesterUtils.filterByTrimester at render time.
+                            const dateStr = assignment.due_at;
                             if (dateStr) {
                                 const triInfo = this.getTrimesterForDate(dateStr);
                                 if (triInfo) {
