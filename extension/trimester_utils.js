@@ -1,7 +1,7 @@
 (function attachTrimesterUtils(globalScope) {
-    const SCHOOL_YEAR_START_MONTH = 7; // August
+    const SCHOOL_YEAR_START_MONTH = 7; // August (0-indexed)
     const SCHOOL_YEAR_START_DAY = 20;
-    const SCHOOL_YEAR_END_MONTH = 5; // June
+    const SCHOOL_YEAR_END_MONTH = 5; // June (0-indexed)
     const SCHOOL_YEAR_END_DAY = 25;
 
     function createLocalDate(year, month, day) {
@@ -74,7 +74,7 @@
             return buildTrimesterInfo(3, startYear);
         }
 
-        return buildTrimesterInfo(2, startYear);
+        return null;
     }
 
     function getAssignmentDueDate(item, currentDate) {

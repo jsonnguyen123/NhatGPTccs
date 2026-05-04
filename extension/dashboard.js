@@ -2,6 +2,9 @@ const MAX_BINARY_SEARCH_ITERATIONS = 25;
 const SPARKLINE_VERTICAL_PADDING = 12;
 const SPARKLINE_OFFSET = 6;
 const DASHBOARD_DEBUG = false;
+// Deterministic fallback if shared trimester detection is temporarily unavailable.
+const DEFAULT_TRIMESTER_CODE = 'T3';
+const NO_GRADEABLE_TRIMESTER_MESSAGE = 'No gradeable assignments in this trimester';
 
 class AcademicDashboard {
     constructor() {
@@ -27,7 +30,7 @@ class AcademicDashboard {
         this.gradeAnalyzerTool = this.toolManager?.getTool('gradeAnalyzer') || null;
         this.hasLoggedGradeAnalyzerFallback = false;
         this.currentTrimesterInfo = this.getTrimesterInfo(new Date());
-        this.selectedTrimester = this.currentTrimesterInfo?.code || 'T3';
+        this.selectedTrimester = this.currentTrimesterInfo?.code || DEFAULT_TRIMESTER_CODE;
         this.init();
     }
 
@@ -1047,7 +1050,7 @@ class AcademicDashboard {
 
         const gradeableRows = this.getGradeableRows(this.simulatorRows);
         if (gradeableRows.length === 0) {
-            this.renderSimulatorPlaceholder('No gradeable assignments in this trimester', 'No gradeable assignments in this trimester');
+            this.renderSimulatorPlaceholder(NO_GRADEABLE_TRIMESTER_MESSAGE, NO_GRADEABLE_TRIMESTER_MESSAGE);
             return;
         }
 
