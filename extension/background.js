@@ -852,6 +852,9 @@ class GmailService {
     }
 }
 
+const CHATBOT_MESSAGE_DELAY_MS = 400;
+const TAB_LOAD_TIMEOUT_MS = 15000;
+
 class CanvasAIBackground {
     constructor() {
         this.apiEndpoint = 'https://canvas-ai-assistant-production.up.railway.app/api';
@@ -3526,6 +3529,28 @@ class CanvasAIBackground {
 
     async handleOpenChatbotWithQuery(request, sender) {
         const { query, assignmentUrl } = request;
+        const waitForTabToComplete = (tabId) => new Promise((resolve, reject) => {
+            let timeoutId = null;
+            const listener = (updatedTabId, info) => {
+                if (updatedTabId === tabId && info.status === 'complete') {
+                    cleanup();
+                    resolve();
+                }
+            };
+            const cleanup = () => {
+                chrome.tabs.onUpdated.removeListener(listener);
+                if (timeoutId !== null) {
+                    clearTimeout(timeoutId);
+                }
+            };
+
+            timeoutId = setTimeout(() => {
+                cleanup();
+                reject(new Error('Timed out waiting for the assignment tab to load.'));
+            }, TAB_LOAD_TIMEOUT_MS);
+
+            chrome.tabs.onUpdated.addListener(listener);
+        });
 
         let targetTab = null;
         const tabs = await chrome.tabs.query({ url: '*://christchurchschool.instructure.com/*' });
@@ -3534,14 +3559,7 @@ class CanvasAIBackground {
             await chrome.tabs.update(targetTab.id, { active: true });
         } else if (assignmentUrl) {
             targetTab = await chrome.tabs.create({ url: assignmentUrl });
-            await new Promise(resolve => {
-                chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
-                    if (tabId === targetTab.id && info.status === 'complete') {
-                        chrome.tabs.onUpdated.removeListener(listener);
-                        resolve();
-                    }
-                });
-            });
+            await waitForTabToComplete(targetTab.id);
         }
 
         if (!targetTab) return;
@@ -3560,7 +3578,7 @@ class CanvasAIBackground {
             } catch (error) {
                 console.warn('OPEN_CHATBOT_WITH_QUERY: Failed to send message to chatbot:', error);
             }
-        }, 400);
+        }, CHATBOT_MESSAGE_DELAY_MS);
     }
 
     buildAcademicBriefingContext(canvasData, blackbaudCalendar, emailResult, courseGradeHistory, lastUpdate) {
@@ -4095,7 +4113,7 @@ class CanvasAIBackground {
     
             if (toolName === 'get_grades') {
                 const triLabel = toolResult.trimesterLabel ? ` (${toolResult.trimesterLabel})` : '';
-                const formatGrade = (grade) => `${Number(Number(grade).toFixed(2))}%`;
+                const formatGrade = (grade) => `${Number(grade).toFixed(2).replace(/\.?0+$/, '')}%`;
                 if (Array.isArray(toolResult)) {
                     let text = `📊 **Your Grades**${triLabel}:\n\n`;
                     toolResult.forEach(g => {

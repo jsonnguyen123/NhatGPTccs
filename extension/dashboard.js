@@ -981,7 +981,7 @@ class AcademicDashboard {
         if (!Number.isFinite(numericGrade)) {
             return '--';
         }
-        return `${Number(numericGrade.toFixed(2))}%`;
+        return `${numericGrade.toFixed(2).replace(/\.?0+$/, '')}%`;
     }
 
     calculateGradeFromEntries(entries) {
@@ -1139,7 +1139,13 @@ class AcademicDashboard {
         const overallGradeDisplay = this.getTrimesterGradeDisplayText(
             Number.isFinite(overallGrade) ? overallGrade : 'unavailable'
         );
-        this.simulatorOverallGradeEl.innerHTML = `${this.escapeHtml(overallGradeDisplay)}${isSimulated ? ' <span class="simulated-badge">Simulated</span>' : ''}`;
+        this.simulatorOverallGradeEl.textContent = overallGradeDisplay;
+        if (isSimulated) {
+            const simulatedBadge = document.createElement('span');
+            simulatedBadge.className = 'simulated-badge';
+            simulatedBadge.textContent = 'Simulated';
+            this.simulatorOverallGradeEl.append(' ', simulatedBadge);
+        }
         this.remainingWorkSummaryEl.textContent = `${Math.round(remainingPoints)} pts across ${gradeableRows.filter(row => row.isPending).length} assignments`;
 
         this.simulatorTableBodyEl.innerHTML = gradeableRows.map(row => {
@@ -1407,11 +1413,11 @@ class AcademicDashboard {
             const day = event.target.closest('.workload-day');
             if (!day) return;
             if ((event.key === 'Enter' || event.key === ' ') && event.target === day) {
+                event.preventDefault();
                 const panel = day.querySelector('.workload-hover-panel');
                 if (!panel) return;
                 const isOpen = !panel.hidden;
                 this.setWorkloadPanelState(day, !isOpen);
-                event.preventDefault();
             }
             if (event.key === 'Escape') {
                 this.workloadChartEl.querySelectorAll('.workload-hover-panel').forEach(panel => {
