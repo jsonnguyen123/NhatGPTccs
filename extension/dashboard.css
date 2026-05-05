@@ -423,28 +423,36 @@ h3 {
 .summary-label,
 .meta-text,
 .weight-chip,
-.pending-badge,
-.activity-date {
+.pending-badge {
     color: var(--text-muted);
     font-size: 12px;
 }
 
 .workload-chart {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(var(--workload-columns, 7), minmax(40px, 1fr));
     gap: 12px;
     margin-top: 20px;
+    position: relative;
     align-items: end;
     min-height: 220px;
 }
 
 .workload-day {
+    position: relative;
+    cursor: pointer;
+    outline: none;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
     align-items: center;
     gap: 10px;
     min-height: 180px;
+}
+
+.workload-day:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 4px;
 }
 
 .workload-bar-wrap {
@@ -456,14 +464,158 @@ h3 {
 
 .workload-bar {
     width: 100%;
-    border-radius: 12px 12px 6px 6px;
     background: linear-gradient(180deg, var(--accent-secondary), var(--accent-primary));
-    min-height: 0;
+    border-radius: 4px 4px 0 0;
+    transition: filter 0.15s ease, transform 0.15s ease;
+    min-height: 4px;
+}
+
+.workload-bar:hover {
+    filter: brightness(1.15);
+    transform: scaleY(1.03);
+    transform-origin: bottom;
+}
+
+.workload-bar--urgent {
+    background: linear-gradient(180deg, #ff6b6b, #dc3545);
+}
+
+.workload-bar--near {
+    background: linear-gradient(180deg, #ffc107, #e65100);
+}
+
+.workload-bar--future {
+    background: linear-gradient(180deg, var(--accent-secondary), var(--accent-primary));
+}
+
+.workload-bar--today {
+    box-shadow: 0 0 0 2px var(--accent-primary);
 }
 
 .workload-bar--empty {
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.04);
+    background: transparent;
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    min-height: 4px;
+}
+
+.workload-day--today .workload-bar {
+    box-shadow: 0 0 0 2px var(--accent-primary);
+}
+
+.workload-day--past {
+    opacity: 0.5;
+}
+
+.workload-day--past .workload-bar {
+    filter: grayscale(0.4);
+}
+
+.workload-date-label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 2px;
+    letter-spacing: 0.01em;
+}
+
+.workload-hover-panel {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    background: var(--bg-secondary, #1e1e2e);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 10px 12px;
+    min-width: 220px;
+    max-width: 280px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    pointer-events: auto;
+}
+
+.workload-hover-panel[hidden] {
+    display: none;
+}
+
+.hover-panel-header {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.hover-assignment-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hover-assignment-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.hover-assignment-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.hover-assignment-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hover-assignment-course {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.hover-assignment-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.hover-open-btn,
+.hover-ai-btn {
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: filter 0.15s;
+}
+
+.hover-open-btn {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+.hover-ai-btn {
+    background: linear-gradient(135deg, var(--accent-secondary), var(--accent-primary));
+    color: #fff;
+}
+
+.hover-open-btn:hover,
+.hover-ai-btn:hover {
+    filter: brightness(1.2);
 }
 
 .course-health-grid {
@@ -473,8 +625,7 @@ h3 {
     margin-top: 16px;
 }
 
-.health-top,
-.activity-row {
+.health-top {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -484,6 +635,14 @@ h3 {
 .health-grade {
     font-size: 26px;
     color: var(--text-primary);
+}
+
+.grade-approx-note {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-left: 2px;
+    vertical-align: super;
+    cursor: help;
 }
 
 .trend-up {
@@ -526,6 +685,19 @@ h3 {
     color: var(--accent-primary-light);
     font-size: 40px;
     line-height: 1;
+}
+
+.simulated-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--accent-secondary), var(--accent-primary));
+    color: #fff;
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-left: 6px;
+    vertical-align: middle;
+    letter-spacing: 0.04em;
 }
 
 .course-selector {
@@ -637,30 +809,6 @@ h3 {
     line-height: 1.6;
 }
 
-.recent-activity-list {
-    display: grid;
-    gap: 12px;
-    margin-top: 16px;
-}
-
-.activity-row {
-    padding: 14px 16px;
-    border-radius: var(--radius-md);
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.activity-row button {
-    border: none;
-    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-    color: #fff;
-    text-align: left;
-    padding: 4px 12px;
-    cursor: pointer;
-    border-radius: 6px;
-    font-weight: 600;
-}
-
 .activity-title {
     color: var(--text-primary);
     font-weight: 600;
@@ -684,8 +832,11 @@ h3 {
         align-items: stretch;
     }
 
-    .workload-chart {
-        grid-template-columns: repeat(2, 1fr);
+    .workload-hover-panel {
+        bottom: auto;
+        top: calc(100% + 6px);
+        min-width: 180px;
+        max-width: 92vw;
     }
 }
 

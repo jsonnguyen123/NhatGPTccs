@@ -1423,6 +1423,13 @@ class CanvasAIBackground {
                     await this.handleGetCourseSimulatorData(request, sendResponse);
                     break;
 
+                case 'OPEN_CHATBOT_WITH_QUERY':
+                    this.handleOpenChatbotWithQuery(request, sender).catch(error => {
+                        console.warn('OPEN_CHATBOT_WITH_QUERY failed:', error);
+                    });
+                    sendResponse({ success: true });
+                    return true;
+
                 default:
                     console.warn('Canvas AI Assistant: Unknown message type:', request.type);
                     sendResponse({ success: false, error: 'Unknown message type' });
@@ -3517,6 +3524,45 @@ class CanvasAIBackground {
         }
     }
 
+    async handleOpenChatbotWithQuery(request, sender) {
+        const { query, assignmentUrl } = request;
+
+        let targetTab = null;
+        const tabs = await chrome.tabs.query({ url: '*://christchurchschool.instructure.com/*' });
+        if (tabs.length > 0) {
+            targetTab = tabs[0];
+            await chrome.tabs.update(targetTab.id, { active: true });
+        } else if (assignmentUrl) {
+            targetTab = await chrome.tabs.create({ url: assignmentUrl });
+            await new Promise(resolve => {
+                chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
+                    if (tabId === targetTab.id && info.status === 'complete') {
+                        chrome.tabs.onUpdated.removeListener(listener);
+                        resolve();
+                    }
+                });
+            });
+        }
+
+        if (!targetTab) return;
+
+        await this.openChatbot(targetTab);
+
+        setTimeout(async () => {
+            try {
+                await chrome.scripting.executeScript({
+                    target: { tabId: targetTab.id },
+                    func: (q) => {
+                        window.canvasAIChatbot?.sendMessage(q);
+                    },
+                    args: [query]
+                });
+            } catch (error) {
+                console.warn('OPEN_CHATBOT_WITH_QUERY: Failed to send message to chatbot:', error);
+            }
+        }, 400);
+    }
+
     buildAcademicBriefingContext(canvasData, blackbaudCalendar, emailResult, courseGradeHistory, lastUpdate) {
         const prioritizedAssignments = [...(canvasData.assignments || [])]
             .map(assignment => ({
@@ -4049,6 +4095,7 @@ class CanvasAIBackground {
     
             if (toolName === 'get_grades') {
                 const triLabel = toolResult.trimesterLabel ? ` (${toolResult.trimesterLabel})` : '';
+                const formatGrade = (grade) => `${Number(Number(grade).toFixed(2))}%`;
                 if (Array.isArray(toolResult)) {
                     let text = `📊 **Your Grades**${triLabel}:\n\n`;
                     toolResult.forEach(g => {
@@ -4056,36 +4103,58 @@ class CanvasAIBackground {
                     });
                     return text;
                 }
-                // Build per-course averages from raw grade entries
-                if (toolResult.grades && Array.isArray(toolResult.grades)) {
-                    const byCourse = {};
-                    toolResult.grades.forEach(g => {
-                        if (!byCourse[g.courseName]) byCourse[g.courseName] = { earned: 0, possible: 0 };
-                        if (g.score != null && g.pointsPossible != null && g.pointsPossible > 0) {
-                            byCourse[g.courseName].earned += g.score;
-                            byCourse[g.courseName].possible += g.pointsPossible;
-                        }
-                    });
+
+                if (toolResult.courses?.length > 0) {
                     let text = `📊 **Your Grades**${triLabel}:\n\n`;
-                    for (const [courseName, totals] of Object.entries(byCourse)) {
-                        if (totals.possible === 0) continue;
-                        const avg = Math.round((totals.earned / totals.possible) * 100);
-                        const emoji = avg >= 90 ? '🌟' : avg >= 80 ? '✅' : avg >= 70 ? '🟡' : '🔴';
-                        text += `${emoji} **${courseName}**: ${avg}%\n`;
-                    }
+                    toolResult.courses.forEach(course => {
+                        const numericGrade = Number(course.grade);
+                        if (!Number.isFinite(numericGrade)) return;
+                        const emoji = numericGrade >= 90 ? '🌟' : numericGrade >= 80 ? '✅' : numericGrade >= 70 ? '🟡' : '🔴';
+                        const letterStr = course.letterGrade ? ` (${course.letterGrade})` : '';
+                        text += `${emoji} **${course.name}**: ${formatGrade(numericGrade)}${letterStr}\n`;
+                    });
+
                     if (toolResult.unavailableCourses?.length > 0) {
                         text += `\n`;
                         toolResult.unavailableCourses.forEach(name => {
                             text += `🔒 **${name}**: Grade unavailable for this trimester\n`;
                         });
                     }
+
+                    if (toolResult.grades?.length > 0) {
+                        const recent = toolResult.grades
+                            .filter(grade => grade.score != null)
+                            .sort((firstGrade, secondGrade) => new Date(secondGrade.gradedAt || 0) - new Date(firstGrade.gradedAt || 0))
+                            .slice(0, 5);
+                        if (recent.length > 0) {
+                            text += `\n📝 **Recent Assignments**:\n`;
+                            recent.forEach(grade => {
+                                const pct = grade.percentage != null ? ` (${grade.percentage}%)` : '';
+                                text += `  • ${grade.assignmentName || 'Unknown'} — ${grade.score}/${grade.pointsPossible}${pct}\n`;
+                            });
+                        }
+                    }
+
                     return text;
                 }
-                if (toolResult.courses) {
-                    let text = `📊 **Your Grades**${triLabel}:\n\n`;
-                    toolResult.courses.forEach(c => {
-                        text += `• **${c.name}**: ${c.grade || 'N/A'}%${c.letterGrade ? ` (${c.letterGrade})` : ''}\n`;
+
+                if (toolResult.grades && Array.isArray(toolResult.grades)) {
+                    const byCourse = {};
+                    toolResult.grades.forEach(grade => {
+                        if (!byCourse[grade.courseName]) byCourse[grade.courseName] = [];
+                        byCourse[grade.courseName].push(grade);
                     });
+
+                    let text = `📊 **Your Grades**${triLabel} *(approximate)*:\n\n`;
+                    for (const [courseName, courseGrades] of Object.entries(byCourse)) {
+                        const scored = courseGrades.filter(grade => grade.score != null && grade.pointsPossible > 0);
+                        if (scored.length === 0) continue;
+                        const earned = scored.reduce((sum, grade) => sum + grade.score, 0);
+                        const possible = scored.reduce((sum, grade) => sum + grade.pointsPossible, 0);
+                        const avg = possible > 0 ? (earned / possible) * 100 : 0;
+                        const emoji = avg >= 90 ? '🌟' : avg >= 80 ? '✅' : avg >= 70 ? '🟡' : '🔴';
+                        text += `${emoji} **${courseName}**: ${formatGrade(avg)}\n`;
+                    }
                     return text;
                 }
             }
