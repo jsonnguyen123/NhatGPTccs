@@ -608,7 +608,7 @@ class CanvasAIOptions {
             if (connectionState) {
                 connectionState.innerHTML = `
                     <div class="status-icon">🔗</div>
-                    <span class="status-text">Click below to connect your Blackbaud account (This feature is still underdevelopment)</span>
+                    <span class="status-text">Click below to connect your Blackbaud account.</span>
                 `;
             }
         }

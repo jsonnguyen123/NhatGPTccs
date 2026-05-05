@@ -4060,14 +4060,16 @@ class CanvasAIBackground {
                 if (toolResult.grades && Array.isArray(toolResult.grades)) {
                     const byCourse = {};
                     toolResult.grades.forEach(g => {
-                        if (!byCourse[g.courseName]) byCourse[g.courseName] = [];
-                        byCourse[g.courseName].push(g);
+                        if (!byCourse[g.courseName]) byCourse[g.courseName] = { earned: 0, possible: 0 };
+                        if (g.score != null && g.pointsPossible != null && g.pointsPossible > 0) {
+                            byCourse[g.courseName].earned += g.score;
+                            byCourse[g.courseName].possible += g.pointsPossible;
+                        }
                     });
                     let text = `📊 **Your Grades**${triLabel}:\n\n`;
-                    for (const [courseName, cGrades] of Object.entries(byCourse)) {
-                        const scored = cGrades.filter(g => g.percentage != null);
-                        if (scored.length === 0) continue;
-                        const avg = Math.round(scored.reduce((s, g) => s + g.percentage, 0) / scored.length);
+                    for (const [courseName, totals] of Object.entries(byCourse)) {
+                        if (totals.possible === 0) continue;
+                        const avg = Math.round((totals.earned / totals.possible) * 100);
                         const emoji = avg >= 90 ? '🌟' : avg >= 80 ? '✅' : avg >= 70 ? '🟡' : '🔴';
                         text += `${emoji} **${courseName}**: ${avg}%\n`;
                     }
