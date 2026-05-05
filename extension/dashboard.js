@@ -26,6 +26,7 @@ class AcademicDashboard {
         this.simulatorCache = new Map();
         this.simulatorRows = [];
         this.simulatorMeta = null;
+        this.workloadChartEventsBound = false;
         this.toolManager = typeof window.ToolManager === 'function' ? new window.ToolManager() : null;
         this.gradeAnalyzerTool = this.toolManager?.getTool('gradeAnalyzer') || null;
         this.hasLoggedGradeAnalyzerFallback = false;
@@ -42,7 +43,6 @@ class AcademicDashboard {
         this.renderGradeTrends();
         this.renderWeeklyWorkloadChart();
         this.renderCourseHealthGrid();
-        this.renderRecentActivity();
         this.populateCourseSelector();
         this.updateActiveTrimesterButtons();
         this.renderScheduleWeekButtons();
@@ -65,7 +65,6 @@ class AcademicDashboard {
         this.gradeTrendsEl = document.getElementById('grade-trends');
         this.workloadChartEl = document.getElementById('workload-chart');
         this.courseHealthGridEl = document.getElementById('course-health-grid');
-        this.recentActivityListEl = document.getElementById('recent-activity-list');
         this.weeklyScheduleEl = document.getElementById('weekly-schedule');
         this.scheduleWeekButtonsEl = document.getElementById('schedule-week-buttons');
         this.scheduleWeekRangeEl = document.getElementById('schedule-week-range');
@@ -786,48 +785,130 @@ class AcademicDashboard {
 
     renderWeeklyWorkloadChart() {
         const assignments = (this.canvasData?.assignments || []).filter(assignment => assignment.dueDate);
-        const dayBuckets = this.buildWeeklyWorkloadBuckets(assignments);
+        const { buckets: dayBuckets, bucketCount } = this.buildWeeklyWorkloadBuckets(assignments);
         if (DASHBOARD_DEBUG) {
             console.log('Dashboard workload buckets', dayBuckets);
         }
 
         const maxTotal = Math.max(...dayBuckets.map(bucket => bucket.total), 0);
+        this.workloadChartEl.style.setProperty('--workload-columns', bucketCount);
         this.workloadChartEl.innerHTML = dayBuckets.map(bucket => {
             const height = maxTotal > 0 ? (bucket.total / maxTotal) * 100 : 0;
+            const dateLabel = bucket.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const assignmentCountLabel = `${bucket.count} assignment${bucket.count === 1 ? '' : 's'}`;
+            const bucketClasses = [
+                'workload-day',
+                bucket.isToday ? 'workload-day--today' : '',
+                bucket.isPast ? 'workload-day--past' : ''
+            ].filter(Boolean).join(' ');
+            const barClasses = [
+                'workload-bar',
+                bucket.urgencyClass,
+                bucket.isToday ? 'workload-bar--today' : ''
+            ].filter(Boolean).join(' ');
+            const hoverPanel = bucket.assignments.length > 0 ? `
+                <div class="workload-hover-panel" role="dialog" aria-label="Assignments for ${this.escapeHtml(`${bucket.label}, ${dateLabel}`)}" hidden>
+                    <div class="hover-panel-header">${this.escapeHtml(`${bucket.label}, ${dateLabel}`)}</div>
+                    <ul class="hover-assignment-list">
+                        ${bucket.assignments.map(assignment => `
+                            <li class="hover-assignment-item">
+                                <div class="hover-assignment-info">
+                                    <span class="hover-assignment-title">${this.escapeHtml(this.truncateText(assignment.title, 40))}</span>
+                                    <span class="hover-assignment-course">${this.escapeHtml(assignment.courseName || 'Unknown Course')}</span>
+                                </div>
+                                <div class="hover-assignment-actions">
+                                    <button class="hover-open-btn" aria-label="Open ${this.escapeHtml(assignment.title)}" data-url="${this.escapeHtml(assignment.url || '')}">↗</button>
+                                    <button class="hover-ai-btn" aria-label="Ask AI about ${this.escapeHtml(assignment.title)}" data-title="${this.escapeHtml(assignment.title)}" data-course="${this.escapeHtml(assignment.courseName || '')}" data-url="${this.escapeHtml(assignment.url || '')}">AI</button>
+                                </div>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            ` : '';
             return `
-                <div class="workload-day">
+                <div class="${bucketClasses}"
+                    data-date="${bucket.isoDate}"
+                    tabindex="0"
+                    role="button"
+                    aria-expanded="false"
+                    aria-label="${this.escapeHtml(`${bucket.label}, ${dateLabel}`)} — ${assignmentCountLabel}">
                     <div class="workload-bar-wrap">
-                        <div class="workload-bar ${bucket.total === 0 ? 'workload-bar--empty' : ''}" style="height:${height}%"></div>
+                        <div class="${barClasses}" style="height:${height}%"></div>
                     </div>
-                    <strong>${bucket.label}</strong>
-                    <span class="chart-caption">${bucket.count} item${bucket.count === 1 ? '' : 's'}</span>
+                    <strong class="workload-day-label">${this.escapeHtml(bucket.label)}</strong>
+                    <span class="workload-date-label">${this.escapeHtml(dateLabel)}</span>
+                    <span class="chart-caption">${assignmentCountLabel}</span>
+                    ${hoverPanel}
                 </div>
             `;
         }).join('');
+
+        if (!this.workloadChartEventsBound) {
+            this.bindWorkloadChartEvents();
+            this.workloadChartEventsBound = true;
+        }
     }
 
     buildWeeklyWorkloadBuckets(assignments) {
         const startOfWeek = this.getStartOfCurrentWeek();
-        return Array.from({ length: 7 }, (_, index) => {
+        const today = this.normalizeDateOnly(new Date());
+        const futureAssignments = assignments.filter(assignment => assignment.dueDate
+            && this.normalizeDateOnly(new Date(assignment.dueDate)) >= today);
+        const furthestDue = futureAssignments.reduce((maxDate, assignment) => {
+            const assignmentDate = this.normalizeDateOnly(new Date(assignment.dueDate));
+            return assignmentDate > maxDate ? assignmentDate : maxDate;
+        }, today);
+        const daysToFurthest = Math.ceil((furthestDue - today) / 86400000);
+        const bucketCount = Math.max(7, Math.min(28, daysToFurthest + 1));
+        const buckets = Array.from({ length: bucketCount }, (_, index) => {
             const dayDate = new Date(startOfWeek);
             dayDate.setDate(startOfWeek.getDate() + index);
-            const bucket = {
+            const isoDate = [
+                dayDate.getFullYear(),
+                String(dayDate.getMonth() + 1).padStart(2, '0'),
+                String(dayDate.getDate()).padStart(2, '0')
+            ].join('-');
+            return {
                 label: dayDate.toLocaleDateString('en-US', { weekday: 'short' }),
+                isoDate,
                 date: dayDate,
                 total: 0,
-                count: 0
+                count: 0,
+                assignments: [],
+                isToday: dayDate.getTime() === today.getTime(),
+                isPast: dayDate.getTime() < today.getTime(),
+                urgencyClass: ''
             };
-
-            assignments.forEach(assignment => {
-                const assignmentDay = this.normalizeDateOnly(assignment.dueDate);
-                if (assignmentDay.getTime() === dayDate.getTime()) {
-                    bucket.count += 1;
-                    bucket.total += this.computePriorityScore(assignment);
-                }
-            });
-
-            return bucket;
         });
+
+        const bucketMap = new Map(buckets.map(bucket => [bucket.date.getTime(), bucket]));
+        assignments.forEach(assignment => {
+            const assignmentDay = this.normalizeDateOnly(new Date(assignment.dueDate));
+            const bucket = bucketMap.get(assignmentDay.getTime());
+            if (!bucket) return;
+            bucket.count += 1;
+            bucket.total += this.computePriorityScore(assignment);
+            bucket.assignments.push({
+                title: assignment.title,
+                courseName: assignment.courseName || '',
+                url: assignment.url || null,
+                points: assignment.points || null,
+                dueDate: assignment.dueDate,
+                daysUntilDue: Math.ceil((assignmentDay - today) / 86400000)
+            });
+        });
+
+        buckets.forEach(bucket => {
+            bucket.urgencyClass = bucket.assignments.length === 0
+                ? 'workload-bar--empty'
+                : bucket.assignments.some(assignment => assignment.daysUntilDue <= 2)
+                    ? 'workload-bar--urgent'
+                    : bucket.assignments.some(assignment => assignment.daysUntilDue <= 7)
+                        ? 'workload-bar--near'
+                        : 'workload-bar--future';
+        });
+
+        return { buckets, bucketCount };
     }
 
     getStartOfCurrentWeek() {
@@ -892,10 +973,15 @@ class AcademicDashboard {
         if (grade === 'unavailable') {
             return 'Grade unavailable for this trimester';
         }
-        if (!Number.isFinite(Number(grade))) {
+        return this.formatGradePercent(grade);
+    }
+
+    formatGradePercent(grade) {
+        const numericGrade = Number(grade);
+        if (!Number.isFinite(numericGrade)) {
             return '--';
         }
-        return `${Number(grade).toFixed(1)}%`;
+        return `${numericGrade.toFixed(2).replace(/\.?0+$/, '')}%`;
     }
 
     calculateGradeFromEntries(entries) {
@@ -939,7 +1025,14 @@ class AcademicDashboard {
                 .sort((firstAssignment, secondAssignment) => new Date(firstAssignment.dueDate) - new Date(secondAssignment.dueDate))[0];
             const trimesterEntries = this.getTrimesterGradeEntries(course.id);
             const courseGrades = this.getScoredEntries(trimesterEntries);
-            const trimesterGrade = this.calculateGradeFromEntries(trimesterEntries);
+            const canonicalCourseGrade = Number.isFinite(Number(course.grade)) ? Number(course.grade) : null;
+            const isCurrentTrimester = this.selectedTrimester === this.currentTrimesterInfo?.code
+                || this.selectedTrimester === this.currentTrimesterInfo?.trimester
+                || this.selectedTrimester == null;
+            const trimesterGrade = (isCurrentTrimester && canonicalCourseGrade != null)
+                ? canonicalCourseGrade
+                : this.calculateGradeFromEntries(trimesterEntries);
+            const gradeIsApproximate = !isCurrentTrimester || canonicalCourseGrade == null;
             const latestValues = courseGrades.slice(-2).map(grade => Number(grade.percentage));
             const trendDelta = latestValues.length === 2 ? latestValues[1] - latestValues[0] : 0;
             const trendClass = trendDelta > 1 ? 'trend-up' : trendDelta < -1 ? 'trend-down' : 'trend-flat';
@@ -957,41 +1050,12 @@ class AcademicDashboard {
                         </div>
                         <span class="${trendClass}">${trendArrow}</span>
                     </div>
-                    <div class="health-grade">${this.escapeHtml(this.getTrimesterGradeDisplayText(trimesterGrade))}</div>
+                    <div class="health-grade">${this.escapeHtml(this.getTrimesterGradeDisplayText(trimesterGrade))}${gradeIsApproximate ? '<span class="grade-approx-note" title="Historical trimester — weighting not applied">~</span>' : ''}</div>
                     <p class="meta-text ${trendClass}">${trendDelta === 0 ? 'Stable trend' : `${trendDelta > 0 ? 'Up' : 'Down'} ${Math.abs(trendDelta).toFixed(0)} pts`}</p>
                     <p class="meta-text" style="margin-top: 10px;">${this.escapeHtml(deadlineText)}</p>
                 </article>
             `;
         }).join('');
-    }
-
-    renderRecentActivity() {
-        const assignments = (this.canvasData?.assignments || [])
-            .filter(assignment => assignment.dueDate && new Date(assignment.dueDate) > new Date())
-            .sort((firstAssignment, secondAssignment) => new Date(firstAssignment.dueDate) - new Date(secondAssignment.dueDate))
-            .slice(0, 6);
-
-        if (assignments.length === 0) {
-            this.recentActivityListEl.innerHTML = '<div class="empty-state">No recent activity. Visit Canvas and sync your data to populate this section.</div>';
-            return;
-        }
-
-        this.recentActivityListEl.innerHTML = assignments.map(assignment => `
-            <div class="activity-row">
-                <div>
-                    <div class="activity-title">${this.escapeHtml(assignment.title)}</div>
-                    <div class="meta-text">${this.escapeHtml(assignment.courseName || 'Unknown Course')}</div>
-                </div>
-                <div style="text-align:right;">
-                    <div class="activity-date">${this.formatShortDate(assignment.dueDate)}</div>
-                    ${assignment.url ? `<button data-url="${this.escapeHtml(assignment.url)}" class="activity-open">Open</button>` : ''}
-                </div>
-            </div>
-        `).join('');
-
-        this.recentActivityListEl.querySelectorAll('.activity-open').forEach(button => {
-            button.addEventListener('click', () => chrome.tabs.create({ url: button.dataset.url }));
-        });
     }
 
     populateCourseSelector() {
@@ -1058,14 +1122,30 @@ class AcademicDashboard {
             return;
         }
 
-        const overallGrade = this.calculateOverallGrade(this.simulatorRows);
+        const hasUserEdits = this.simulatorRows.some(row =>
+            row.earned !== row.actualEarned && row.actualEarned !== undefined
+        );
+        const canvasGrade = Number.isFinite(Number(this.simulatorMeta?.course?.grade))
+            ? Number(this.simulatorMeta.course.grade)
+            : null;
+        const overallGrade = (!hasUserEdits && canvasGrade != null)
+            ? canvasGrade
+            : this.calculateOverallGrade(this.simulatorRows);
+        const isSimulated = hasUserEdits || canvasGrade == null;
         const remainingPoints = gradeableRows
             .filter(row => row.isPending)
             .reduce((sum, row) => sum + Number(row.possible || 0), 0);
 
-        this.simulatorOverallGradeEl.textContent = this.getTrimesterGradeDisplayText(
+        const overallGradeDisplay = this.getTrimesterGradeDisplayText(
             Number.isFinite(overallGrade) ? overallGrade : 'unavailable'
         );
+        this.simulatorOverallGradeEl.textContent = overallGradeDisplay;
+        if (isSimulated) {
+            const simulatedBadge = document.createElement('span');
+            simulatedBadge.className = 'simulated-badge';
+            simulatedBadge.textContent = 'Simulated';
+            this.simulatorOverallGradeEl.append(' ', simulatedBadge);
+        }
         this.remainingWorkSummaryEl.textContent = `${Math.round(remainingPoints)} pts across ${gradeableRows.filter(row => row.isPending).length} assignments`;
 
         this.simulatorTableBodyEl.innerHTML = gradeableRows.map(row => {
@@ -1305,6 +1385,84 @@ class AcademicDashboard {
             weekday: 'short',
             month: 'short',
             day: 'numeric'
+        });
+    }
+
+    truncateText(value, maxLength) {
+        const text = String(value ?? '');
+        if (text.length <= maxLength) {
+            return text;
+        }
+        return `${text.slice(0, Math.max(0, maxLength - 1))}…`;
+    }
+
+    bindWorkloadChartEvents() {
+        this.workloadChartEl.addEventListener('mouseenter', event => {
+            const day = event.target.closest('.workload-day');
+            if (!day) return;
+            this.setWorkloadPanelState(day, true);
+        }, true);
+
+        this.workloadChartEl.addEventListener('mouseleave', event => {
+            const day = event.target.closest('.workload-day');
+            if (!day || day.contains(event.relatedTarget)) return;
+            this.setWorkloadPanelState(day, false);
+        }, true);
+
+        this.workloadChartEl.addEventListener('keydown', event => {
+            const day = event.target.closest('.workload-day');
+            if (!day) return;
+            if ((event.key === 'Enter' || event.key === ' ') && event.target === day) {
+                event.preventDefault();
+                const panel = day.querySelector('.workload-hover-panel');
+                if (!panel) return;
+                const isOpen = !panel.hidden;
+                this.setWorkloadPanelState(day, !isOpen);
+            }
+            if (event.key === 'Escape') {
+                this.workloadChartEl.querySelectorAll('.workload-hover-panel').forEach(panel => {
+                    panel.hidden = true;
+                });
+                day.setAttribute('aria-expanded', 'false');
+                day.focus();
+            }
+        });
+
+        this.workloadChartEl.addEventListener('click', event => {
+            const openBtn = event.target.closest('.hover-open-btn');
+            if (openBtn?.dataset.url) {
+                this.openAssignmentUrl(openBtn.dataset.url);
+                return;
+            }
+
+            const aiBtn = event.target.closest('.hover-ai-btn');
+            if (aiBtn) {
+                this.askAIAboutAssignment(aiBtn.dataset.title, aiBtn.dataset.course, aiBtn.dataset.url);
+            }
+        });
+    }
+
+    setWorkloadPanelState(day, isOpen) {
+        const panel = day?.querySelector('.workload-hover-panel');
+        if (!panel) {
+            day?.setAttribute('aria-expanded', 'false');
+            return;
+        }
+        panel.hidden = !isOpen;
+        day.setAttribute('aria-expanded', String(isOpen));
+    }
+
+    openAssignmentUrl(url) {
+        if (!url) return;
+        chrome.tabs.create({ url });
+    }
+
+    askAIAboutAssignment(title, courseName, assignmentUrl) {
+        const query = `Help me with "${title}" in ${courseName}. Walk me through the key concepts, what I need to know to complete it, and any tips.`;
+        chrome.runtime.sendMessage({
+            type: 'OPEN_CHATBOT_WITH_QUERY',
+            query,
+            assignmentUrl
         });
     }
 
