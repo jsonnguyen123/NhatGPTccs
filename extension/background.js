@@ -3546,7 +3546,7 @@ class CanvasAIBackground {
 
             timeoutId = setTimeout(() => {
                 cleanup();
-                reject(new Error('Timed out waiting for the assignment tab to load.'));
+                reject(new Error('Timed out waiting for tab to load.'));
             }, TAB_LOAD_TIMEOUT_MS);
 
             chrome.tabs.onUpdated.addListener(listener);
@@ -3576,7 +3576,7 @@ class CanvasAIBackground {
                     args: [query]
                 });
             } catch (error) {
-                console.warn('OPEN_CHATBOT_WITH_QUERY: Failed to send message to chatbot:', error);
+                console.warn(`OPEN_CHATBOT_WITH_QUERY: Failed to send message to chatbot for tab ${targetTab.id}:`, error);
             }
         }, CHATBOT_MESSAGE_DELAY_MS);
     }
