@@ -900,7 +900,7 @@ class AcademicDashboard {
             bucket.count += 1;
             bucket.total += this.computePriorityScore(assignment);
             bucket.assignments.push({
-                title: assignment.title,
+                title: assignment.title || 'Untitled assignment',
                 courseName: assignment.courseName || '',
                 url: assignment.url || null,
                 points: assignment.points || null,
