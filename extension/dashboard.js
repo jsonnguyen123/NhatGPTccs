@@ -2,6 +2,10 @@ const MAX_BINARY_SEARCH_ITERATIONS = 25;
 const SPARKLINE_VERTICAL_PADDING = 12;
 const SPARKLINE_OFFSET = 6;
 const DASHBOARD_DEBUG = false;
+const WORKLOAD_BUCKET_COLUMNS = 7;
+const WORKLOAD_BUCKET_DAYS = 21;
+const WORKLOAD_VISIBLE_ASSIGNMENTS = 2;
+const WORKLOAD_ASSIGNMENT_TITLE_MAX_LENGTH = 30;
 // Deterministic fallback if shared trimester detection is temporarily unavailable.
 const DEFAULT_TRIMESTER_CODE = 'T3';
 const NO_GRADEABLE_TRIMESTER_MESSAGE = 'No gradeable assignments in this trimester';
@@ -785,17 +789,30 @@ class AcademicDashboard {
 
     renderWeeklyWorkloadChart() {
         const assignments = (this.canvasData?.assignments || []).filter(assignment => assignment.dueDate);
-        const { buckets: dayBuckets, bucketCount } = this.buildWeeklyWorkloadBuckets(assignments);
+        const { buckets: dayBuckets, columnCount } = this.buildWeeklyWorkloadBuckets(assignments);
         if (DASHBOARD_DEBUG) {
             console.log('Dashboard workload buckets', dayBuckets);
         }
 
         const maxTotal = Math.max(...dayBuckets.map(bucket => bucket.total), 0);
-        this.workloadChartEl.style.setProperty('--workload-columns', bucketCount);
+        this.workloadChartEl.style.setProperty('--workload-columns', columnCount);
         this.workloadChartEl.innerHTML = dayBuckets.map(bucket => {
             const height = maxTotal > 0 ? (bucket.total / maxTotal) * 100 : 0;
+            const dayLabel = bucket.date.toLocaleDateString('en-US', { weekday: 'short' });
             const dateLabel = bucket.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             const assignmentCountLabel = `${bucket.count} assignment${bucket.count === 1 ? '' : 's'}`;
+            const assignmentPreview = bucket.assignments.length > 0
+                ? `
+                    <div class="workload-assignment-list">
+                        ${bucket.assignments.slice(0, WORKLOAD_VISIBLE_ASSIGNMENTS).map(assignment => `
+                            <span class="workload-assignment-chip">${this.escapeHtml(this.truncateText(assignment.title, WORKLOAD_ASSIGNMENT_TITLE_MAX_LENGTH))}</span>
+                        `).join('')}
+                        ${bucket.assignments.length > WORKLOAD_VISIBLE_ASSIGNMENTS
+                            ? `<span class="workload-assignment-more">+${bucket.assignments.length - WORKLOAD_VISIBLE_ASSIGNMENTS} more</span>`
+                            : ''}
+                    </div>
+                `
+                : '<span class="workload-assignment-empty">No assignments</span>';
             const bucketClasses = [
                 'workload-day',
                 bucket.isToday ? 'workload-day--today' : '',
@@ -831,12 +848,13 @@ class AcademicDashboard {
                     tabindex="0"
                     role="button"
                     aria-expanded="false"
-                    aria-label="${this.escapeHtml(`${bucket.label}, ${dateLabel}`)} — ${assignmentCountLabel}">
+                    aria-label="${this.escapeHtml(`${dayLabel}, ${dateLabel}`)} — ${assignmentCountLabel}">
                     <div class="workload-bar-wrap">
                         <div class="${barClasses}" style="height:${height}%"></div>
                     </div>
-                    <strong class="workload-day-label">${this.escapeHtml(bucket.label)}</strong>
-                    <span class="workload-date-label">${this.escapeHtml(dateLabel)}</span>
+                    <strong class="workload-date-heading">${this.escapeHtml(dateLabel)}</strong>
+                    <span class="workload-day-label">${this.escapeHtml(dayLabel)}</span>
+                    ${assignmentPreview}
                     <span class="chart-caption">${assignmentCountLabel}</span>
                     ${hoverPanel}
                 </div>
@@ -852,14 +870,7 @@ class AcademicDashboard {
     buildWeeklyWorkloadBuckets(assignments) {
         const startOfWeek = this.getStartOfCurrentWeek();
         const today = this.normalizeDateOnly(new Date());
-        const futureAssignments = assignments.filter(assignment => assignment.dueDate
-            && this.normalizeDateOnly(new Date(assignment.dueDate)) >= today);
-        const furthestDue = futureAssignments.reduce((maxDate, assignment) => {
-            const assignmentDate = this.normalizeDateOnly(new Date(assignment.dueDate));
-            return assignmentDate > maxDate ? assignmentDate : maxDate;
-        }, today);
-        const daysToFurthest = Math.ceil((furthestDue - today) / 86400000);
-        const bucketCount = Math.max(7, Math.min(28, daysToFurthest + 1));
+        const bucketCount = WORKLOAD_BUCKET_DAYS;
         const buckets = Array.from({ length: bucketCount }, (_, index) => {
             const dayDate = new Date(startOfWeek);
             dayDate.setDate(startOfWeek.getDate() + index);
@@ -889,7 +900,7 @@ class AcademicDashboard {
             bucket.count += 1;
             bucket.total += this.computePriorityScore(assignment);
             bucket.assignments.push({
-                title: assignment.title,
+                title: assignment.title || 'Untitled assignment',
                 courseName: assignment.courseName || '',
                 url: assignment.url || null,
                 points: assignment.points || null,
@@ -899,6 +910,7 @@ class AcademicDashboard {
         });
 
         buckets.forEach(bucket => {
+            bucket.assignments.sort((left, right) => left.title.localeCompare(right.title));
             bucket.urgencyClass = bucket.assignments.length === 0
                 ? 'workload-bar--empty'
                 : bucket.assignments.some(assignment => assignment.daysUntilDue <= 2)
@@ -908,7 +920,7 @@ class AcademicDashboard {
                         : 'workload-bar--future';
         });
 
-        return { buckets, bucketCount };
+        return { buckets, columnCount: WORKLOAD_BUCKET_COLUMNS };
     }
 
     getStartOfCurrentWeek() {

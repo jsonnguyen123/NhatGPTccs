@@ -430,12 +430,11 @@ h3 {
 
 .workload-chart {
     display: grid;
-    grid-template-columns: repeat(var(--workload-columns, 7), minmax(40px, 1fr));
+    grid-template-columns: repeat(var(--workload-columns, 7), minmax(0, 1fr));
     gap: 12px;
     margin-top: 20px;
     position: relative;
-    align-items: end;
-    min-height: 220px;
+    align-items: stretch;
 }
 
 .workload-day {
@@ -444,10 +443,14 @@ h3 {
     outline: none;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
-    align-items: center;
+    justify-content: flex-start;
+    align-items: stretch;
     gap: 10px;
-    min-height: 180px;
+    min-height: 0;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
 }
 
 .workload-day:focus-visible {
@@ -457,7 +460,7 @@ h3 {
 
 .workload-bar-wrap {
     width: 100%;
-    min-height: 140px;
+    height: 56px;
     display: flex;
     align-items: flex-end;
 }
@@ -517,6 +520,51 @@ h3 {
     text-align: center;
     margin-top: 2px;
     letter-spacing: 0.01em;
+}
+
+.workload-date-heading {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.workload-day-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.workload-assignment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 60px;
+}
+
+.workload-assignment-chip {
+    display: block;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    font-size: 11px;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.workload-assignment-empty,
+.workload-assignment-more,
+.workload-day .chart-caption {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.workload-day .chart-caption {
+    margin-top: auto;
 }
 
 .workload-hover-panel {
@@ -838,6 +886,10 @@ h3 {
         min-width: 180px;
         max-width: 92vw;
     }
+
+    .workload-chart {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 720px) {
@@ -859,6 +911,10 @@ h3 {
 
     .menu-week-grid {
         grid-template-columns: 1fr;
+    }
+
+    .workload-chart {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .schedule-day-column {
