@@ -460,7 +460,6 @@ h3 {
 
 .workload-bar-wrap {
     width: 100%;
-    min-height: 56px;
     height: 56px;
     display: flex;
     align-items: flex-end;

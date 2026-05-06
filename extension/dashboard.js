@@ -5,6 +5,7 @@ const DASHBOARD_DEBUG = false;
 const WORKLOAD_BUCKET_COLUMNS = 7;
 const WORKLOAD_BUCKET_DAYS = 21;
 const WORKLOAD_VISIBLE_ASSIGNMENTS = 2;
+const WORKLOAD_ASSIGNMENT_TITLE_MAX_LENGTH = 30;
 // Deterministic fallback if shared trimester detection is temporarily unavailable.
 const DEFAULT_TRIMESTER_CODE = 'T3';
 const NO_GRADEABLE_TRIMESTER_MESSAGE = 'No gradeable assignments in this trimester';
@@ -804,7 +805,7 @@ class AcademicDashboard {
                 ? `
                     <div class="workload-assignment-list">
                         ${bucket.assignments.slice(0, WORKLOAD_VISIBLE_ASSIGNMENTS).map(assignment => `
-                            <span class="workload-assignment-chip">${this.escapeHtml(this.truncateText(assignment.title, 30))}</span>
+                            <span class="workload-assignment-chip">${this.escapeHtml(this.truncateText(assignment.title, WORKLOAD_ASSIGNMENT_TITLE_MAX_LENGTH))}</span>
                         `).join('')}
                         ${bucket.assignments.length > WORKLOAD_VISIBLE_ASSIGNMENTS
                             ? `<span class="workload-assignment-more">+${bucket.assignments.length - WORKLOAD_VISIBLE_ASSIGNMENTS} more</span>`
