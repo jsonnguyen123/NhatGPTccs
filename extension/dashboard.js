@@ -788,13 +788,13 @@ class AcademicDashboard {
 
     renderWeeklyWorkloadChart() {
         const assignments = (this.canvasData?.assignments || []).filter(assignment => assignment.dueDate);
-        const { buckets: dayBuckets, bucketCount } = this.buildWeeklyWorkloadBuckets(assignments);
+        const { buckets: dayBuckets, columnCount } = this.buildWeeklyWorkloadBuckets(assignments);
         if (DASHBOARD_DEBUG) {
             console.log('Dashboard workload buckets', dayBuckets);
         }
 
         const maxTotal = Math.max(...dayBuckets.map(bucket => bucket.total), 0);
-        this.workloadChartEl.style.setProperty('--workload-columns', bucketCount);
+        this.workloadChartEl.style.setProperty('--workload-columns', columnCount);
         this.workloadChartEl.innerHTML = dayBuckets.map(bucket => {
             const height = maxTotal > 0 ? (bucket.total / maxTotal) * 100 : 0;
             const dayLabel = bucket.date.toLocaleDateString('en-US', { weekday: 'short' });
@@ -919,7 +919,7 @@ class AcademicDashboard {
                         : 'workload-bar--future';
         });
 
-        return { buckets, bucketCount: WORKLOAD_BUCKET_COLUMNS };
+        return { buckets, columnCount: WORKLOAD_BUCKET_COLUMNS };
     }
 
     getStartOfCurrentWeek() {
