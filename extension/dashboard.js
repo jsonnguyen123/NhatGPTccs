@@ -936,10 +936,20 @@ class AcademicDashboard {
     }
 
     filterItemsBySelectedTrimester(items, getDate) {
-        return globalThis.TrimesterUtils?.filterByTrimester(items, this.selectedTrimester, {
-            currentDate: new Date(),
-            getDate
-        }) || [...(items || [])];
+        if (globalThis.TrimesterUtils) {
+            // Use the authoritative TrimesterUtils filter. An empty array is a valid
+            // result (no items in that trimester) — don't collapse it with || which
+            // would trigger the all-items fallback and mix every trimester together.
+            const filtered = globalThis.TrimesterUtils.filterByTrimester(items, this.selectedTrimester, {
+                currentDate: new Date(),
+                getDate
+            });
+            if (Array.isArray(filtered)) return filtered;
+        }
+        // TrimesterUtils unavailable: return all items unfiltered. Callers that need an
+        // authoritative grade should consume course.grade directly rather than recalculating
+        // from these entries (see renderCourseHealthGrid / renderSimulator).
+        return [...(items || [])];
     }
 
     updateActiveTrimesterButtons() {
@@ -1026,9 +1036,13 @@ class AcademicDashboard {
             const trimesterEntries = this.getTrimesterGradeEntries(course.id);
             const courseGrades = this.getScoredEntries(trimesterEntries);
             const canonicalCourseGrade = Number.isFinite(Number(course.grade)) ? Number(course.grade) : null;
-            const isCurrentTrimester = this.selectedTrimester === this.currentTrimesterInfo?.code
-                || this.selectedTrimester === this.currentTrimesterInfo?.trimester
-                || this.selectedTrimester == null;
+            // When TrimesterUtils is unavailable, currentTrimesterInfo is null and
+            // both optional-chain lookups return undefined. Fall back to DEFAULT_TRIMESTER_CODE
+            // so the comparison doesn't silently evaluate to false.
+            const currentCode = this.currentTrimesterInfo?.code
+                ?? this.currentTrimesterInfo?.trimester
+                ?? DEFAULT_TRIMESTER_CODE;
+            const isCurrentTrimester = this.selectedTrimester === currentCode || this.selectedTrimester == null;
             const trimesterGrade = (isCurrentTrimester && canonicalCourseGrade != null)
                 ? canonicalCourseGrade
                 : this.calculateGradeFromEntries(trimesterEntries);
@@ -1219,7 +1233,17 @@ class AcademicDashboard {
     }
 
     calculateTargetRequirement(rows, targetPercent) {
-        const currentOverall = this.calculateOverallGrade(rows);
+        // Mirror renderSimulator: when the user hasn't touched any score yet, use Canvas's
+        // authoritative course grade rather than recalculating from potentially mixed-trimester rows.
+        const hasUserEdits = rows.some(row =>
+            row.earned !== row.actualEarned && row.actualEarned !== undefined
+        );
+        const canvasGrade = Number.isFinite(Number(this.simulatorMeta?.course?.grade))
+            ? Number(this.simulatorMeta.course.grade)
+            : null;
+        const currentOverall = (!hasUserEdits && canvasGrade != null)
+            ? canvasGrade
+            : this.calculateOverallGrade(rows);
         const remainingRows = rows.filter(row => row.isPending && Number(row.possible) > 0);
         const remainingPoints = remainingRows.reduce((sum, row) => sum + Number(row.possible), 0);
 

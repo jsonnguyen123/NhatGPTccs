@@ -680,10 +680,11 @@ class GradeAnalyzerTool extends CanvasTool {
 
     calculateAverage(grades) {
         if (grades.length === 0) return 0;
-        const validGrades = grades.filter(g => g.percentage !== null);
+        const validGrades = grades.filter(g => g.score !== null && Number(g.pointsPossible) > 0);
         if (validGrades.length === 0) return 0;
-        const sum = validGrades.reduce((acc, g) => acc + g.percentage, 0);
-        return Math.round(sum / validGrades.length);
+        const totalEarned = validGrades.reduce((acc, g) => acc + Number(g.score), 0);
+        const totalPossible = validGrades.reduce((acc, g) => acc + Number(g.pointsPossible), 0);
+        return totalPossible > 0 ? Math.round((totalEarned / totalPossible) * 100) : 0;
     }
 
     getGradeEmoji(percentage) {
