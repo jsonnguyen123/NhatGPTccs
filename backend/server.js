@@ -16,11 +16,7 @@ const crypto = require('crypto');
 // ═══════════════════════════════════════════════════════════════
 
 const BB_ENCRYPTION_KEY = process.env.BB_ENCRYPTION_KEY;
-const LOG_REDACTION_SECRET = process.env.LOG_REDACTION_SECRET
-    || process.env.BB_ENCRYPTION_KEY
-    || process.env.CANVAS_CLIENT_SECRET
-    || process.env.BLACKBAUD_CLIENT_SECRET
-    || 'nhatgpt-log-redaction';
+const LOG_REDACTION_SECRET = process.env.LOG_REDACTION_SECRET || BB_ENCRYPTION_KEY;
 const bbTokenStore = new Map();
 const canvasRefreshStore = new Map();
 
@@ -68,6 +64,7 @@ const logger = winston.createLogger({
 
 function createOpaqueId(value) {
     if (value === undefined || value === null) return undefined;
+    if (!LOG_REDACTION_SECRET) return undefined;
     return crypto.createHmac('sha256', LOG_REDACTION_SECRET).update(String(value)).digest('hex').slice(0, 12);
 }
 
