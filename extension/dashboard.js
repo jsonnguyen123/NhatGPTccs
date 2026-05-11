@@ -341,7 +341,11 @@ class AcademicDashboard {
     toIsoDate(date) {
         const normalizedDate = new Date(date);
         normalizedDate.setHours(0, 0, 0, 0);
-        return normalizedDate.toISOString().split('T')[0];
+        return [
+            normalizedDate.getFullYear(),
+            String(normalizedDate.getMonth() + 1).padStart(2, '0'),
+            String(normalizedDate.getDate()).padStart(2, '0')
+        ].join('-');
     }
 
     /**
@@ -659,10 +663,15 @@ class AcademicDashboard {
         this.renderWeeklyMenuSkeleton(requestedDays);
 
         try {
-            const responses = await Promise.all(requestedDays.map(day => this.sendMessage({
+            const menuResults = await Promise.allSettled(requestedDays.map(day => this.sendMessage({
                 type: 'FETCH_DINING_MENU',
                 date: day.isoDate
             })));
+            const responses = menuResults.map(result => result.status === 'fulfilled' ? result.value : null);
+            const hasAnyMenuResponse = responses.some(response => this.hasMenuData(response?.data));
+            if (!hasAnyMenuResponse) {
+                throw new Error('No menu data returned');
+            }
 
             this.menuDisplayDayCount = this.getWeeklyMenuDayCount(responses);
             const visibleResponses = responses.slice(0, this.menuDisplayDayCount);
@@ -1474,7 +1483,14 @@ class AcademicDashboard {
             const aiBtn = event.target.closest('.hover-ai-btn');
             if (aiBtn) {
                 this.askAIAboutAssignment(aiBtn.dataset.title, aiBtn.dataset.course, aiBtn.dataset.url);
+                return;
             }
+
+            const day = event.target.closest('.workload-day');
+            if (!day) return;
+            const panel = day.querySelector('.workload-hover-panel');
+            if (!panel) return;
+            this.setWorkloadPanelState(day, panel.hidden);
         });
     }
 
@@ -1483,6 +1499,16 @@ class AcademicDashboard {
         if (!panel) {
             day?.setAttribute('aria-expanded', 'false');
             return;
+        }
+        if (isOpen) {
+            this.workloadChartEl.querySelectorAll('.workload-day[aria-expanded="true"]').forEach(openDay => {
+                if (openDay === day) return;
+                const openPanel = openDay.querySelector('.workload-hover-panel');
+                if (openPanel) {
+                    openPanel.hidden = true;
+                }
+                openDay.setAttribute('aria-expanded', 'false');
+            });
         }
         panel.hidden = !isOpen;
         day.setAttribute('aria-expanded', String(isOpen));
