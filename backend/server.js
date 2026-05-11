@@ -16,7 +16,11 @@ const crypto = require('crypto');
 // ═══════════════════════════════════════════════════════════════
 
 const BB_ENCRYPTION_KEY = process.env.BB_ENCRYPTION_KEY;
-const LOG_REDACTION_SECRET = process.env.LOG_REDACTION_SECRET || process.env.BB_ENCRYPTION_KEY || process.env.CANVAS_CLIENT_SECRET || crypto.randomBytes(32).toString('hex');
+const LOG_REDACTION_SECRET = process.env.LOG_REDACTION_SECRET
+    || process.env.BB_ENCRYPTION_KEY
+    || process.env.CANVAS_CLIENT_SECRET
+    || process.env.BLACKBAUD_CLIENT_SECRET
+    || 'nhatgpt-log-redaction';
 const bbTokenStore = new Map();
 const canvasRefreshStore = new Map();
 
@@ -63,12 +67,12 @@ const logger = winston.createLogger({
 });
 
 function createOpaqueId(value) {
-    if (value === undefined || value === null || value === '') return undefined;
+    if (value === undefined || value === null) return undefined;
     return crypto.createHmac('sha256', LOG_REDACTION_SECRET).update(String(value)).digest('hex').slice(0, 12);
 }
 
 function getValueLength(value) {
-    if (typeof value === 'string' || Array.isArray(value)) return value.length;
+    if (typeof value === 'string') return value.length;
     if (value && typeof value === 'object') {
         try {
             return JSON.stringify(value).length;
@@ -84,11 +88,11 @@ function summarizeProviderPayload(payload) {
 }
 
 function summarizeGeminiResponse(geminiData) {
-    const finishReasonCount = (geminiData?.candidates || []).filter(candidate => candidate?.finishReason).length;
+    const candidatesWithFinishReason = (geminiData?.candidates || []).filter(candidate => candidate?.finishReason).length;
     return {
         candidateCount: geminiData?.candidates?.length || 0,
         promptBlocked: !!geminiData?.promptFeedback?.blockReason,
-        finishReasonCount
+        candidatesWithFinishReason
     };
 }
 
