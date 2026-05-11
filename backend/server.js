@@ -16,6 +16,7 @@ const crypto = require('crypto');
 // ═══════════════════════════════════════════════════════════════
 
 const BB_ENCRYPTION_KEY = process.env.BB_ENCRYPTION_KEY;
+const LOG_REDACTION_SECRET = process.env.LOG_REDACTION_SECRET || process.env.BB_ENCRYPTION_KEY || process.env.CANVAS_CLIENT_SECRET || crypto.randomBytes(32).toString('hex');
 const bbTokenStore = new Map();
 const canvasRefreshStore = new Map();
 
@@ -63,7 +64,7 @@ const logger = winston.createLogger({
 
 function createOpaqueId(value) {
     if (value === undefined || value === null || value === '') return undefined;
-    return crypto.createHash('sha256').update(String(value)).digest('hex').slice(0, 12);
+    return crypto.createHmac('sha256', LOG_REDACTION_SECRET).update(String(value)).digest('hex').slice(0, 12);
 }
 
 function getValueLength(value) {
@@ -83,17 +84,17 @@ function summarizeProviderPayload(payload) {
 }
 
 function summarizeGeminiResponse(geminiData) {
+    const finishReasonCount = (geminiData?.candidates || []).filter(candidate => candidate?.finishReason).length;
     return {
         candidateCount: geminiData?.candidates?.length || 0,
         promptBlocked: !!geminiData?.promptFeedback?.blockReason,
-        finishReasons: (geminiData?.candidates || []).map(candidate => candidate?.finishReason).filter(Boolean)
+        finishReasonCount
     };
 }
 
 function summarizeFunctionArgs(args) {
     return {
         argCount: args && typeof args === 'object' ? Object.keys(args).length : 0,
-        argKeys: args && typeof args === 'object' ? Object.keys(args) : [],
         argsLength: getValueLength(args)
     };
 }
