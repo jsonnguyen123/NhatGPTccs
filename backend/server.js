@@ -16,6 +16,7 @@ const crypto = require('crypto');
 // ═══════════════════════════════════════════════════════════════
 
 const BB_ENCRYPTION_KEY = process.env.BB_ENCRYPTION_KEY;
+const LOG_REDACTION_SECRET = process.env.LOG_REDACTION_SECRET || BB_ENCRYPTION_KEY;
 const bbTokenStore = new Map();
 const canvasRefreshStore = new Map();
 
@@ -60,6 +61,44 @@ const logger = winston.createLogger({
         new winston.transports.Console({ format: winston.format.simple() })
     ]
 });
+
+function createOpaqueId(value) {
+    if (value === undefined || value === null) return undefined;
+    if (!LOG_REDACTION_SECRET) return undefined;
+    return crypto.createHmac('sha256', LOG_REDACTION_SECRET).update(String(value)).digest('hex').slice(0, 12);
+}
+
+function getValueLength(value) {
+    if (typeof value === 'string') return value.length;
+    if (value && typeof value === 'object') {
+        try {
+            return JSON.stringify(value).length;
+        } catch {
+            return undefined;
+        }
+    }
+    return undefined;
+}
+
+function summarizeProviderPayload(payload) {
+    return { payloadLength: getValueLength(payload) };
+}
+
+function summarizeGeminiResponse(geminiData) {
+    const candidatesWithFinishReason = (geminiData?.candidates || []).filter(candidate => candidate?.finishReason).length;
+    return {
+        candidateCount: geminiData?.candidates?.length || 0,
+        promptBlocked: !!geminiData?.promptFeedback?.blockReason,
+        candidatesWithFinishReason
+    };
+}
+
+function summarizeFunctionArgs(args) {
+    return {
+        argCount: args && typeof args === 'object' ? Object.keys(args).length : 0,
+        argsLength: getValueLength(args)
+    };
+}
 
 const app = express();
 app.set('trust proxy', 1); 
@@ -164,11 +203,19 @@ app.post('/api/report-issue', async (req, res) => {
 
         if (emailjsResponse.ok || emailjsResponse.status === 200) {
             reportRateLimit.set(rateLimitKey, now);
-            console.log(`📧 Issue report sent from ${user_email}: ${issue_title}`);
+            logger.info('Issue report sent', {
+                reporterId: createOpaqueId(user_email),
+                issueType: issue_type,
+                titleLength: getValueLength(issue_title),
+                descriptionLength: getValueLength(description)
+            });
             return res.json({ success: true });
         } else {
             const errorText = await emailjsResponse.text();
-            console.error('📧 EmailJS API error:', emailjsResponse.status, errorText);
+            logger.error('EmailJS API error', {
+                status: emailjsResponse.status,
+                ...summarizeProviderPayload(errorText)
+            });
             return res.status(502).json({ success: false, error: 'Email service failed.' });
         }
     } catch (error) {
@@ -331,7 +378,11 @@ async function executeWebSearch(query, location = null) {
 
     const safety = isQuerySafe(query);
     if (!safety.safe) {
-        logger.warn('Blocked AI-requested search query', { query: query.substring(0, 50), reason: safety.reason });
+        logger.warn('Blocked AI-requested search query', {
+            queryId: createOpaqueId(query),
+            queryLength: getValueLength(query),
+            reason: safety.reason
+        });
         return { blocked: true, reason: safety.reason, results: [] };
     }
 
@@ -823,7 +874,14 @@ app.post('/api/oauth/token', oauthRateLimiter, async (req, res) => {
             method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams(formParams)
         });
-        if (!response.ok) { const errText = await response.text(); logger.error('Canvas token exchange failed:', errText); return res.status(response.status).json({ success: false, error: 'Token exchange failed' }); }
+        if (!response.ok) {
+            const errText = await response.text();
+            logger.error('Canvas token exchange failed', {
+                status: response.status,
+                ...summarizeProviderPayload(errText)
+            });
+            return res.status(response.status).json({ success: false, error: 'Token exchange failed' });
+        }
 
         const tokenData = await response.json();
         if (tokenData.access_token) {
@@ -872,8 +930,7 @@ app.post('/api/blackbaud/oauth/token', oauthRateLimiter, async (req, res) => {
     
     logger.info('BB OAuth verifier', {
         hasVerifier: !!code_verifier,
-        len: code_verifier?.length,
-        sample: code_verifier?.slice(0, 10)
+        len: code_verifier?.length
       });
     
     if (!code_verifier || code_verifier.length < 43 || code_verifier.length > 128) {
@@ -995,8 +1052,8 @@ app.post('/api/ai/chat', validateCanvasTokenCached, async (req, res) => {
 
         // ── Log what we're sending (for debugging) ──
         logger.info('AI Chat Request', {
-            user: req.canvasUser?.name,
-            messagePreview: message.substring(0, 80),
+            userId: createOpaqueId(req.canvasUser?.id),
+            messageLength: getValueLength(message),
             hasCourses: !!(canvasData?.courses?.length),
             courseCount: canvasData?.courses?.length || 0,
             assignmentCount: canvasData?.assignments?.length || 0,
@@ -1034,12 +1091,15 @@ app.post('/api/ai/chat', validateCanvasTokenCached, async (req, res) => {
 
         if (!geminiResponse.ok) {
             const errText = await geminiResponse.text();
-            logger.error('Gemini API error:', { status: geminiResponse.status, body: errText.substring(0, 500) });
+            logger.error('Gemini API error', {
+                status: geminiResponse.status,
+                ...summarizeProviderPayload(errText)
+            });
             return res.status(502).json({ success: false, error: `Gemini API error: ${geminiResponse.status}` });
         }
 
         const geminiData = await geminiResponse.json();
-        logger.info('GEMINI RAW RESPONSE:', JSON.stringify(geminiData).substring(0, 1000));
+        logger.info('Gemini response received', summarizeGeminiResponse(geminiData));
 
 
         // ── Check for blocked content ──
@@ -1053,7 +1113,7 @@ app.post('/api/ai/chat', validateCanvasTokenCached, async (req, res) => {
 
         const candidate = geminiData.candidates?.[0];
         if (!candidate || !candidate.content?.parts?.length) {
-            logger.warn('Gemini returned no candidates', { geminiData: JSON.stringify(geminiData).substring(0, 500) });
+            logger.warn('Gemini returned no candidates', summarizeGeminiResponse(geminiData));
             return res.json({
                 success: true, type: 'text',
                 response: "I'm having trouble processing that request. Could you try rephrasing?"
@@ -1067,7 +1127,7 @@ app.post('/api/ai/chat', validateCanvasTokenCached, async (req, res) => {
 
         if (functionCallPart) {
             const { name, args } = functionCallPart.functionCall;
-            logger.info('Gemini requested function call', { name, args });
+            logger.info('Gemini requested function call', { name, ...summarizeFunctionArgs(args) });
 
             // ── Handle web_search server-side ──
             if (name === 'web_search' && args?.query) {
@@ -1187,7 +1247,10 @@ app.post('/api/ai/briefing', validateCanvasTokenCached, async (req, res) => {
 
         if (!response.ok) {
             const errText = await response.text();
-            logger.error('Academic briefing Gemini error:', { status: response.status, body: errText.substring(0, 500) });
+            logger.error('Academic briefing Gemini error', {
+                status: response.status,
+                ...summarizeProviderPayload(errText)
+            });
             return res.status(502).json({ success: false, error: `Gemini API error: ${response.status}` });
         }
 
@@ -1280,7 +1343,10 @@ app.post('/api/ai/chat/tool-result', validateCanvasTokenCached, async (req, res)
 
         if (!geminiResponse.ok) {
             const errText = await geminiResponse.text();
-            logger.error('Gemini tool-result error:', { status: geminiResponse.status, body: errText.substring(0, 500) });
+            logger.error('Gemini tool-result error', {
+                status: geminiResponse.status,
+                ...summarizeProviderPayload(errText)
+            });
             return res.status(502).json({ success: false, error: `Gemini synthesis error: ${geminiResponse.status}` });
         }
 
@@ -1359,7 +1425,12 @@ app.post('/api/search', validateCanvasTokenCached, async (req, res) => {
 
         const safety = isQuerySafe(query);
         if (!safety.safe) {
-            logger.warn('Blocked search query', { query: query.substring(0, 50), reason: safety.reason, userId: req.canvasUser?.id });
+            logger.warn('Blocked search query', {
+                queryId: createOpaqueId(query),
+                queryLength: getValueLength(query),
+                reason: safety.reason,
+                userId: createOpaqueId(req.canvasUser?.id)
+            });
             return res.status(400).json({ success: false, error: 'This search query is not allowed.', blocked: true, reason: safety.reason });
         }
 
