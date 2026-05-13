@@ -710,8 +710,9 @@ class AcademicDashboard {
      * @returns {string[]}
      */
     getMenuEntrees(menuData, mealName) {
-        const entreePattern = /(entree|entrée|entrees|entrées|main|grill|rotisserie)/i;
+        const entreePattern = /(entree|entrée|entrees|Entrées|main|grill|rotisserie)/i;
         const mealEntries = Array.isArray(menuData?.meals?.[mealName]) ? menuData.meals[mealName] : [];
+        console.log(`Menu data for ${mealName}:`, mealEntries);
         return mealEntries
             .filter(item => entreePattern.test(String(item?.category || '')))
             .map(item => String(item?.name || '').trim())

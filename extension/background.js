@@ -382,7 +382,7 @@ async function getCanvasTokenHelper() {
 class SageDiningMenuService {
     constructor() {
         this.siteBase = 'https://www.sagedining.com';
-        this.menuId = 134980; // Christchurch menuId (discovered via DevTools)
+        this.menuId = 136726; // Christchurch menuId (discovered via DevTools)
         this.cachedByKey = new Map();
         this.CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
     }
@@ -460,6 +460,8 @@ class SageDiningMenuService {
             }
 
             const json = await resp.json();
+            console.log(`🔍 [SAGE RAW] Meal: ${m} | Date: ${sageDate}`);
+            console.log(`🔍 [SAGE RAW] Response:`, JSON.stringify(json, null, 2));
             results[m.toLowerCase()] = this.normalizeSageResponse(json, m);
         }
 
@@ -474,40 +476,125 @@ class SageDiningMenuService {
     }
 
     normalizeSageResponse(json, mealName) {
-        // json is like: { "Soups": [...], "Salads": [...], "Deli": [...], ... }
-        // Each value appears to be an array of item objects/strings.
+        console.log('[normalizeSageResponse] START', {
+            mealName,
+            json
+        });
+    
         const items = [];
-
-        if (!json || typeof json !== 'object') return items;
-
-        for (const [station, arr] of Object.entries(json)) {
-            if (!Array.isArray(arr)) continue;
-
-            for (const entry of arr) {
-                const name =
-                    (entry && typeof entry === 'object' && (entry.name || entry.item || entry.title)) ||
-                    (typeof entry === 'string' ? entry : null);
-
-                if (!name) continue;
-
-                items.push({
-                    name: String(name).trim(),
-                    category: station,
-                    meal: mealName
-                });
-            }
+    
+        if (!json || typeof json !== 'object') {
+            console.log('[normalizeSageResponse] Invalid json input');
+            return items;
         }
-
+    
+        const processStation = (station, value, parentStation = null) => {
+            const fullCategory = parentStation
+                ? `${parentStation} - ${station}`
+                : station;
+    
+            console.log('[processStation] Processing', {
+                station,
+                parentStation,
+                fullCategory,
+                valueType: Array.isArray(value)
+                    ? 'array'
+                    : typeof value
+            });
+    
+            // CASE 1: station is an array
+            if (Array.isArray(value)) {
+                console.log(
+                    `[processStation] ${fullCategory} contains ${value.length} entries`
+                );
+    
+                for (const entry of value) {
+                    console.log('[processStation] Raw entry:', entry);
+    
+                    const name =
+                        (entry && typeof entry === 'object' &&
+                            (entry.name ||
+                            entry.item ||
+                            entry.title ||
+                            entry.itemName ||
+                            entry.label ||
+                            entry.displayName ||
+                            entry.menuItemName ||
+                            // last-resort: grab the first string-valued property on the object
+                            Object.values(entry).find(v => typeof v === 'string' && v.trim()))) ||
+                        (typeof entry === 'string' ? entry : null);
+    
+                    if (!name) {
+                        console.log(
+                            '[processStation] Skipping entry with no valid name'
+                        );
+                        continue;
+                    }
+    
+                    const item = {
+                        name: String(name).trim(),
+                        category: fullCategory,
+                        meal: mealName
+                    };
+    
+                    console.log('[processStation] Adding item:', item);
+    
+                    items.push(item);
+                }
+    
+                return;
+            }
+    
+            // CASE 2: nested object of sub-stations
+            if (value && typeof value === 'object') {
+                console.log(
+                    `[processStation] ${fullCategory} is a nested object`
+                );
+    
+                for (const [subStation, subValue] of Object.entries(value)) {
+                    console.log(
+                        `[processStation] Descending into sub-station: ${subStation}`
+                    );
+    
+                    processStation(subStation, subValue, fullCategory); 
+                }
+    
+                return;
+            }
+    
+            console.log(
+                `[processStation] Skipping unsupported value in ${fullCategory}`
+            );
+        };
+    
+        for (const [station, value] of Object.entries(json)) {
+            console.log(`[normalizeSageResponse] Top-level station: ${station}`);
+    
+            processStation(station, value);
+        }
+    
+        console.log('[normalizeSageResponse] Items before dedupe:', items);
+    
         // de-dupe by name+category
         const seen = new Set();
-        return items.filter(i => {
+    
+        const deduped = items.filter(i => {
             const k = `${i.category}::${i.name}`;
-            if (seen.has(k)) return false;
+    
+            if (seen.has(k)) {
+                console.log('[normalizeSageResponse] Duplicate removed:', k);
+                return false;
+            }
+    
             seen.add(k);
             return true;
         });
+    
+        console.log('[normalizeSageResponse] FINAL RESULT', deduped);
+    
+        return deduped;
     }
-
+    
     formatMenuResponse(menuData, mealType = null) {
         if (!menuData?.success) {
             return "I couldn't fetch the dining menu right now. Please check https://www.sagedining.com/sites/christchurch/menu";
