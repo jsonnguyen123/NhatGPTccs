@@ -1,156 +1,70 @@
-# Canvas AI Assistant - Chrome Extension
+# NhatGPT
 
-A comprehensive Chrome extension that integrates an AI-powered chatbot with Canvas LMS to help students organize assignments, track grades, and manage their academic workflow.
+NhatGPT is a Chrome extension plus a Node.js backend for Christ Church School. In the extension UI it is branded as **Canvas AI Assistant**. The current codebase is built around Christchurch School services and currently talks to a Railway-hosted backend.
 
-## Features
+## What the project does today
 
-- **AI Chatbot Integration**: Powered by OpenAI GPT-4o for intelligent academic assistance
-- **Canvas Data Extraction**: Seamlessly extracts course information, assignments, and grades
-- **Smart Organization**: Helps students prioritize tasks and manage deadlines
-- **Real-time Updates**: Syncs with Canvas to provide current academic information
-- **SSO Authentication**: Leverages existing Canvas session cookies for secure access
+- Connects to **Canvas** with OAuth or a manual Canvas API token
+- Opens an in-page **AI chat** overlay on Canvas pages
+- Builds an **academic dashboard** with a daily briefing, course health, workload, grade trends, a grade what-if simulator, Blackbaud schedule data, and Sage Dining menu data
+- Connects to **Blackbaud** for schedule and calendar data
+- Connects to **Gmail** with read-only access for school email summaries
+- Uses **Google Gemini** on the backend for chat and briefing generation
+- Uses **Serper** for web search tool calls and **EmailJS** for issue reporting
 
-## Architecture
+## Current scope and limits
 
-### Frontend Components
-- **Content Script**: Injects into Canvas pages to extract data using existing session
-- **Popup UI**: Quick access interface with Canvas-matching design
-- **Chatbot Interface**: Interactive AI assistant with conversation history
-- **Options Page**: Extension settings and configuration
+- The checked-in extension is hardcoded for `https://christchurchschool.instructure.com` and Christchurch-specific services.
+- The checked-in extension backend URL is `https://canvas-ai-assistant-production.up.railway.app`.
+- The backend stores synced data, settings, and OAuth refresh tokens in memory. Restarting the server clears that state.
+- `backend/package.json` includes `test` and `lint` scripts, but the repository currently has no Jest tests and no ESLint config.
 
-### Backend Services
-- **API Server**: Handles data storage and AI processing
-- **Database**: Stores user preferences and chat history
-- **OpenAI Integration**: GPT-4o for multilingual, multimodal responses
+## Tech stack
 
-## Installation & Setup
+### Extension
+- Chrome Extension Manifest V3
+- Plain HTML, CSS, and JavaScript
+- Chrome Identity, Storage, Tabs, Notifications, and Messaging APIs
 
-### Prerequisites
-- Chrome Browser
-- Canvas LMS account with SSO authentication
-- OpenAI API key (optional, for AI features)
+### Backend
+- Node.js 18
+- Express
+- helmet, cors, compression, node-cron, winston
+- Google Gemini 2.5 Flash via the Generative Language API
 
-### Installation Steps
+### External services
+- Canvas LMS API
+- Blackbaud SKY API
+- Gmail API
+- Sage Dining
+- Serper
+- EmailJS
+- Railway
 
-1. **Backend Setup** (Required for AI features)
-   ```bash
-   # Navigate to backend directory
-   cd backend
-   
-   # Install dependencies
-   npm install
-   
-   # Configure environment
-   cp .env.example .env
-   # Edit .env with your OpenAI API key
-   
-   # Start server
-   npm start
-   ```
+## Repository layout
 
-2. **Extension Installation**
-   ```bash
-   # Load unpacked extension in Chrome
-   chrome://extensions/ → Enable Developer Mode → Load unpacked
-   Select the extension directory
-   ```
+- `/home/runner/work/NhatGPT/NhatGPT/extension` - Chrome extension source
+- `/home/runner/work/NhatGPT/NhatGPT/backend` - Express backend
+- `/home/runner/work/NhatGPT/NhatGPT/INSTALLATION.md` - local setup and Railway deployment guide
 
-3. **Canvas Integration**
-   - Navigate to your Canvas dashboard
-   - The extension will automatically detect Canvas pages
-   - Grant necessary permissions when prompted
+## Quickstart
 
-## Usage
+### Fastest way to run the current checked-in build
 
-### Accessing the Chatbot
-1. Click the extension icon in Chrome toolbar
-2. Select "Open AI Assistant" from the popup
-3. The chatbot interface will appear as an overlay on Canvas
+1. Load `/home/runner/work/NhatGPT/NhatGPT/extension` as an unpacked extension in Chrome.
+2. Open the extension and complete the Canvas sign-in flow from the welcome page, or add a Canvas API token in the options page.
+3. Optionally connect Blackbaud and Gmail from the options page.
+4. Open a Canvas page and use the popup, chatbot, or dashboard.
 
-### Available Commands
-- "Show my assignments for this week"
-- "What's my current grade in [Course Name]?"
-- "List upcoming deadlines"
-- "Summarize my course progress"
-- "Help me prioritize my tasks"
+### If you need to work on the backend
 
-### Data Privacy
-- All data extraction happens locally in your browser
-- No Canvas credentials are stored or transmitted
-- Chat history is optionally stored for session continuity
-- OpenAI API calls are made securely with your own API key
+1. Use Node 18.
+2. From `/home/runner/work/NhatGPT/NhatGPT/backend`, run `npm install`.
+3. Copy `.env.example` to `.env` and add the required values described in `INSTALLATION.md`.
+4. Start the server with `npm start`.
 
-## Technical Implementation
+> The extension source in this repository does **not** point to `localhost`. To use your own backend, update the hardcoded Railway URL in `extension/background.js` and the matching host permission in `extension/manifest.json`, then reload the unpacked extension.
 
-### Content Script Strategy
-The extension uses content scripts injected into Canvas pages to:
-- Access DOM elements containing course data
-- Read JavaScript variables from Canvas scripts
-- Extract metadata from `<meta>` tags
-- Utilize existing session cookies for authentication
+## Deployment
 
-### Data Extraction Methods
-- Course information from dashboard navigation
-- Assignment details from course pages
-- Grade data from gradebook sections
-- Calendar events and deadlines
-- Announcements and notifications
-
-### AI Integration
-- OpenAI GPT-4o for natural language processing
-- Context-aware responses based on Canvas data
-- Multilingual support for international students
-- Multimodal capabilities for image-based queries
-
-## Troubleshooting
-
-### Common Issues
-1. **Extension not detecting Canvas**: Ensure you're logged into Canvas
-2. **AI features not working**: Check OpenAI API key configuration
-3. **Data not syncing**: Refresh the Canvas page and try again
-4. **Chatbot unresponsive**: Verify backend server is running
-
-### Canvas Compatibility
-- Tested with Canvas LMS versions 2024.1+
-- Compatible with institutional SSO systems
-- Works with custom Canvas themes
-
-## Development
-
-### Project Structure
-```
-canvas-ai-assistant/
-├── extension/
-│   ├── manifest.json
-│   ├── content.js
-│   ├── popup/
-│   ├── chatbot/
-│   └── options/
-├── backend/
-│   ├── server.js
-│   ├── api/
-│   └── database/
-└── documentation/
-```
-
-### Contributing
-1. Fork the repository
-2. Create a feature branch
-3. Implement changes
-4. Test thoroughly
-5. Submit pull request
-
-## License
-
-MIT License - See LICENSE file for details
-
-## Support
-
-For technical support or feature requests:
-- GitHub Issues: Report bugs and suggest features
-- Documentation: Check the `/documentation` folder
-- Canvas Community: Share experiences with other users
-
----
-
-**Note**: This extension is designed to work within Canvas LMS terms of service and respects user privacy. Always ensure compliance with your institution's policies when using third-party tools with Canvas.
+Production deployment for this project is Railway-only. Use `INSTALLATION.md` for the full Railway setup, required environment variables, and the extension changes needed to point at a new Railway project.

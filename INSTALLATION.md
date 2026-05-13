@@ -1,245 +1,199 @@
-# Canvas AI Assistant - Installation Guide
+# Installation and deployment
 
-## 📦 Installation Package Contents
+## What works locally in the current repo
 
-Your Canvas AI Assistant package includes:
+There are two different setup paths in the current codebase:
 
-```
-canvas-ai-assistant/
-├── extension/                 # Chrome Extension Files
-│   ├── manifest.json         # Extension configuration
-│   ├── background.js         # Service worker
-│   ├── content.js            # Canvas data extraction
-│   ├── content-styles.css    # Chatbot styling
-│   ├── popup/                # Extension popup UI
-│   ├── options/              # Settings page
-│   ├── chatbot/              # AI chatbot interface
-│   └── icons/                # Extension icons
-├── backend/                  # API Server
-│   ├── server.js             # Main server file
-│   ├── package.json          # Dependencies
-│   ├── .env.example          # Environment template
-│   └── logs/                 # Server logs
-├── README.md                 # Project overview
-├── SETUP_GUIDE.md            # Detailed setup instructions
-├── TECHNICAL_DOCUMENTATION.md # Technical details
-└── INSTALLATION.md           # This file
-```
+1. **Local extension run**: load the extension from this repository in Chrome. This works today and uses the Railway backend URL already hardcoded in the extension.
+2. **Local backend run**: start the Express server from `/home/runner/work/NhatGPT/NhatGPT/backend` for backend development or direct API testing.
 
-## 🚀 Quick Installation
+The checked-in extension does **not** call `localhost`. If you want the extension to use your own backend, you must change the hardcoded Railway URL in `extension/background.js` and the matching host permission in `extension/manifest.json` before reloading the extension.
 
-### Option 1: Complete Installation (Recommended)
+## Prerequisites
 
-1. **Extract the package** to a location on your computer
-2. **Follow the SETUP_GUIDE.md** for detailed backend and extension setup
-3. **Configure your OpenAI API key** for full AI features
+- Chrome or another Chromium browser that supports unpacked extensions
+- Node.js 18
+- npm 8 or newer
+- A Railway account for production deployment
+- Access to the credentials used by the current backend
 
-### Option 2: Extension Only (Basic Features)
+## Required backend environment variables
 
-If you only want the basic Canvas integration without AI features:
+Create `/home/runner/work/NhatGPT/NhatGPT/backend/.env` from `/home/runner/work/NhatGPT/NhatGPT/backend/.env.example`, then add the values below.
 
-1. **Navigate to** `chrome://extensions/`
-2. **Enable "Developer mode"**
-3. **Click "Load unpacked"**
-4. **Select the `extension/` folder**
-5. **The extension will work** with offline AI responses
+### Variables already listed in `.env.example`
 
-## ⚙️ Configuration Files
+- `PORT`
+- `NODE_ENV`
+- `CANVAS_CLIENT_ID`
+- `CANVAS_CLIENT_SECRET`
+- `BLACKBAUD_CLIENT_ID`
+- `BLACKBAUD_CLIENT_SECRET`
+- `SERPER_API_KEY`
+- `EMAILJS_PUBLIC_KEY`
+- `EMAILJS_SERVICE_ID`
+- `EMAILJS_TEMPLATE_ID`
+- `GEMINI_API_KEY`
+- `ALLOWED_ORIGINS`
+- `RATE_LIMIT_WINDOW_MS`
+- `RATE_LIMIT_MAX_REQUESTS`
+- `LOG_LEVEL`
 
-### Backend Configuration
+### Variables used by `backend/server.js` but missing from `.env.example`
 
-Before starting the backend server, create a `.env` file in the backend directory:
+- `BLACKBAUD_SUBSCRIPTION_KEY`
+- `ALLOWED_REDIRECT_URIS`
+- `BB_ENCRYPTION_KEY`
+- `LOG_REDACTION_SECRET` (optional; the server falls back to `BB_ENCRYPTION_KEY`)
+
+### Notes about the current server code
+
+- `BB_ENCRYPTION_KEY` must be a 32-byte hex string because the server uses it for AES-256-GCM token encryption.
+- `ALLOWED_REDIRECT_URIS` is used to validate OAuth redirect URIs for the Canvas and Blackbaud token exchange routes.
+- `ALLOWED_ORIGINS` is used for CORS and should include your unpacked extension origin, for example `chrome-extension://<extension-id>`.
+- `RATE_LIMIT_WINDOW_MS` and `RATE_LIMIT_MAX_REQUESTS` are present in `.env.example`, but the current server code does not read them.
+
+You can generate an encryption key with:
 
 ```bash
-cd backend
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+## Local extension setup
+
+1. Open `chrome://extensions/`.
+2. Enable **Developer mode**.
+3. Click **Load unpacked**.
+4. Select `/home/runner/work/NhatGPT/NhatGPT/extension`.
+5. Open the extension.
+6. Use the welcome page to start Canvas OAuth, or open the options page and paste a Canvas API token manually.
+7. If you need schedule data, connect Blackbaud from the options page.
+8. If you need email data, connect Gmail from the options page.
+
+### Important local behavior
+
+- The checked-in extension already targets `https://canvas-ai-assistant-production.up.railway.app`.
+- Loading the extension locally does **not** require a local backend if you want to test the current hardcoded production path.
+- The popup docs link still points to `https://github.com/your-repo/docs` in the current code.
+
+## Local backend setup
+
+1. Open a shell in `/home/runner/work/NhatGPT/NhatGPT/backend`.
+2. Switch to Node 18.
+3. Install dependencies:
+
+```bash
+npm install
+```
+
+4. Create `.env`:
+
+```bash
 cp .env.example .env
 ```
 
-Edit `.env` with your settings:
-```env
-# Required
-OPENAI_API_KEY=your_api_key_here
+5. Edit `.env` and add every required value listed above, including the variables that are missing from `.env.example`.
+6. Start the server:
 
-# Optional customizations
-PORT=3000
-NODE_ENV=development
-LOG_LEVEL=info
+```bash
+npm start
 ```
 
-### Extension Configuration
+7. Verify the health endpoint:
 
-The extension is pre-configured but you can modify:
+```bash
+curl http://localhost:3000/api/health
+```
 
-- **manifest.json**: Permissions, version, API endpoints
-- **Popup settings**: UI customization in `popup/popup.css`
-- **Chatbot styling**: Modify `content-styles.css`
+### Current validation scripts
 
-## 🔧 Backend Setup
+From `/home/runner/work/NhatGPT/NhatGPT/backend`:
 
-### Prerequisites
-- Node.js 16+ and npm
-- OpenAI API key (for AI features)
+- `npm start`
+- `npm run dev`
+- `npm test`
+- `npm run lint`
+- `npm run format`
 
-### Installation Steps
+Current repository state:
 
-1. **Navigate to backend directory:**
-   ```bash
-   cd canvas-ai-assistant/backend
-   ```
+- `npm test` exits with "No tests found"
+- `npm run lint` fails because no ESLint config is checked in
 
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+## Using your own backend with the extension
 
-3. **Configure environment:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your OpenAI API key
-   ```
+The repository does not include an environment switch for the backend URL. To point the extension at your own backend, update these checked-in values and then reload the unpacked extension:
 
-4. **Start the server:**
-   ```bash
-   npm start
-   ```
+- `extension/background.js`
+  - `https://canvas-ai-assistant-production.up.railway.app/api`
+  - the hardcoded OAuth, refresh, Blackbaud proxy, and search URLs that use the same Railway domain
+- `extension/manifest.json`
+  - the host permission for `https://canvas-ai-assistant-production.up.railway.app/*`
 
-5. **Verify server is running:**
-   - Visit `http://localhost:3000/api/health`
-   - Should return server status
+If you want the extension to talk to a local backend instead of Railway, you also need matching host permissions for that local origin.
 
-## 🎯 Extension Setup
+## Railway deployment
 
-### Chrome Installation
+### 1. Create the Railway project
 
-1. **Open Chrome Extensions page:**
-   - Navigate to `chrome://extensions/`
-   - Enable "Developer mode" (toggle switch)
+1. Create a new Railway project.
+2. Deploy the backend from `/home/runner/work/NhatGPT/NhatGPT/backend`.
+3. Use Node 18.
+4. Use `npm install` as the install step.
+5. Use `npm start` as the start command.
 
-2. **Load the extension:**
-   - Click "Load unpacked"
-   - Select the `extension/` folder from your extracted package
-   - Extension icon should appear in toolbar
+### 2. Add Railway environment variables
 
-3. **Verify installation:**
-   - Click the extension icon
-   - Should see the Canvas AI Assistant popup
-   - Icon should be active when on Canvas pages
+Set every backend variable listed earlier in the Railway project settings.
 
-### Configuration
+Minimum production set:
 
-1. **Open extension options:**
-   - Right-click extension icon → "Options"
-   - Or click "Settings" in popup
+- `NODE_ENV=production`
+- `CANVAS_CLIENT_ID`
+- `CANVAS_CLIENT_SECRET`
+- `BLACKBAUD_CLIENT_ID`
+- `BLACKBAUD_CLIENT_SECRET`
+- `BLACKBAUD_SUBSCRIPTION_KEY`
+- `SERPER_API_KEY`
+- `EMAILJS_PUBLIC_KEY`
+- `EMAILJS_SERVICE_ID`
+- `EMAILJS_TEMPLATE_ID`
+- `GEMINI_API_KEY`
+- `ALLOWED_ORIGINS`
+- `ALLOWED_REDIRECT_URIS`
+- `BB_ENCRYPTION_KEY`
+- `LOG_LEVEL`
 
-2. **Configure AI settings:**
-   - Enter OpenAI API key
-   - Select AI model (GPT-4o recommended)
-   - Adjust creativity settings
+Railway provides `PORT`, so you do not need to hardcode it unless you want to override the default.
 
-3. **General settings:**
-   - Enable auto-sync
-   - Choose theme preference
-   - Configure notifications
+### 3. Configure the OAuth redirect list
 
-## 📱 Usage Instructions
+The backend rejects unknown redirect URIs. Add the Chrome extension redirect URI used by your extension build to:
 
-### Basic Usage
+- `ALLOWED_REDIRECT_URIS` in Railway
+- the allowed redirect URI list in your Canvas OAuth app
+- the allowed redirect URI list in your Blackbaud OAuth app
 
-1. **Navigate to Canvas** (any instructure.com domain)
-2. **Click extension icon** in Chrome toolbar
-3. **Select "Open AI Chat"** to start chatbot
+The extension gets that URI from `chrome.identity.getRedirectURL()`.
 
-### Chat Commands
+### 4. Point the extension at your Railway backend
 
-- **"Show my assignments"** - List upcoming assignments
-- **"What's my grade in [course]?"** - Course grade information
-- **"Help me prioritize"** - Task prioritization suggestions
-- **"List my courses"** - Current course overview
+After Railway gives you a project URL:
 
-### Popup Features
+1. Replace the current Railway domain in `extension/background.js` with your Railway project URL.
+2. Replace the matching host permission in `extension/manifest.json`.
+3. Reload the unpacked extension.
+4. Update `ALLOWED_ORIGINS` so it includes the extension origin for the reloaded build.
 
-- **Quick Actions**: Direct access to main features
-- **Recent Activity**: Upcoming assignments display
-- **Statistics**: Course and assignment counts
-- **Status Indicators**: Connection and sync status
+### 5. Load and test the extension
 
-## 🔒 Security Considerations
+1. Load `/home/runner/work/NhatGPT/NhatGPT/extension` as an unpacked extension.
+2. Complete Canvas sign-in.
+3. Confirm the backend health endpoint is live on Railway.
+4. Confirm chat, Blackbaud, and Gmail flows still work.
 
-### Data Privacy
-- All Canvas data stored locally
-- No credentials transmitted
-- OpenAI API key stored securely
-- Session-based authentication only
+## Production notes
 
-### Network Security
-- HTTPS required for all connections
-- CORS properly configured
-- Rate limiting implemented
-- Input validation on all endpoints
-
-## 🛠️ Troubleshooting
-
-### Common Issues
-
-**Extension not working:**
-- Verify on Canvas instructure.com domain
-- Check that you're logged into Canvas
-- Ensure backend server is running (for AI features)
-
-**AI features not working:**
-- Verify OpenAI API key is configured
-- Check backend server connectivity
-- Review browser console for errors
-
-**Data not syncing:**
-- Refresh Canvas page
-- Click "Refresh Data" in popup
-- Check browser storage permissions
-
-### Debug Mode
-
-Enable detailed logging:
-1. Open extension background page
-2. Check console for error messages
-3. Review network tab for API calls
-
-## 📊 Performance
-
-### Optimization Features
-- Efficient DOM querying
-- Smart data updates
-- Background processing
-- Memory management
-- Rate limiting
-
-### Resource Usage
-- Minimal Canvas page impact
-- Local data storage
-- Efficient API calls
-- Automatic cleanup
-
-## 🔄 Updates
-
-### Updating the Extension
-1. Download latest package
-2. Replace existing files
-3. Reload extension in Chrome
-4. Reconfigure settings if needed
-
-### Updating Backend
-1. Stop current server
-2. Replace backend files
-3. Run `npm install` for new dependencies
-4. Restart server
-
-## 📞 Support
-
-For installation support:
-1. Check SETUP_GUIDE.md for detailed instructions
-2. Review TECHNICAL_DOCUMENTATION.md for technical details
-3. Verify all prerequisites are met
-4. Check browser console for error messages
-
----
-
-**Note**: This installation package provides a complete Canvas AI Assistant solution with full AI capabilities. The extension respects Canvas terms of service and user privacy. Always ensure compliance with your institution's policies.
+- The backend uses in-memory `Map` storage for synced data, user settings, Blackbaud tokens, and Canvas refresh tokens. Restarting the Railway service clears that state.
+- The backend writes logs to `/home/runner/work/NhatGPT/NhatGPT/backend/logs` when run locally.
+- The repository includes `/home/runner/work/NhatGPT/NhatGPT/backend/.railwayignore` with `node_modules`, `.env`, and `logs` ignored.
