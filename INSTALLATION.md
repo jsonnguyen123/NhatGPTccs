@@ -5,7 +5,7 @@
 There are two different setup paths in the current codebase:
 
 1. **Local extension run**: load the extension from this repository in Chrome. This works today and uses the Railway backend URL already hardcoded in the extension.
-2. **Local backend run**: start the Express server from `/home/runner/work/NhatGPT/NhatGPT/backend` for backend development or direct API testing.
+2. **Local backend run**: start the Express server from `./backend` for backend development or direct API testing.
 
 The checked-in extension does **not** call `localhost`. If you want the extension to use your own backend, you must change the hardcoded Railway URL in `extension/background.js` and the matching host permission in `extension/manifest.json` before reloading the extension.
 
@@ -19,7 +19,7 @@ The checked-in extension does **not** call `localhost`. If you want the extensio
 
 ## Required backend environment variables
 
-Create `/home/runner/work/NhatGPT/NhatGPT/backend/.env` from `/home/runner/work/NhatGPT/NhatGPT/backend/.env.example`, then add the values below.
+Create `./backend/.env` from `./backend/.env.example`, then add the values below.
 
 ### Variables already listed in `.env.example`
 
@@ -64,7 +64,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 1. Open `chrome://extensions/`.
 2. Enable **Developer mode**.
 3. Click **Load unpacked**.
-4. Select `/home/runner/work/NhatGPT/NhatGPT/extension`.
+4. Select `./extension`.
 5. Open the extension.
 6. Use the welcome page to start Canvas OAuth, or open the options page and paste a Canvas API token manually.
 7. If you need schedule data, connect Blackbaud from the options page.
@@ -78,7 +78,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ## Local backend setup
 
-1. Open a shell in `/home/runner/work/NhatGPT/NhatGPT/backend`.
+1. Open a shell in `./backend`.
 2. Switch to Node 18.
 3. Install dependencies:
 
@@ -107,7 +107,7 @@ curl http://localhost:3000/api/health
 
 ### Current validation scripts
 
-From `/home/runner/work/NhatGPT/NhatGPT/backend`:
+From `./backend`:
 
 - `npm start`
 - `npm run dev`
@@ -137,7 +137,7 @@ If you want the extension to talk to a local backend instead of Railway, you als
 ### 1. Create the Railway project
 
 1. Create a new Railway project.
-2. Deploy the backend from `/home/runner/work/NhatGPT/NhatGPT/backend`.
+2. Deploy the backend from `./backend`.
 3. Use Node 18.
 4. Use `npm install` as the install step.
 5. Use `npm start` as the start command.
@@ -187,7 +187,7 @@ After Railway gives you a project URL:
 
 ### 5. Load and test the extension
 
-1. Load `/home/runner/work/NhatGPT/NhatGPT/extension` as an unpacked extension.
+1. Load `./extension` as an unpacked extension.
 2. Complete Canvas sign-in.
 3. Confirm the backend health endpoint is live on Railway.
 4. Confirm chat, Blackbaud, and Gmail flows still work.
@@ -195,5 +195,5 @@ After Railway gives you a project URL:
 ## Production notes
 
 - The backend uses in-memory `Map` storage for synced data, user settings, Blackbaud tokens, and Canvas refresh tokens. Restarting the Railway service clears that state.
-- The backend writes logs to `/home/runner/work/NhatGPT/NhatGPT/backend/logs` when run locally.
-- The repository includes `/home/runner/work/NhatGPT/NhatGPT/backend/.railwayignore` with `node_modules`, `.env`, and `logs` ignored.
+- The backend writes logs to `./backend/logs` when run locally.
+- The repository includes `./backend/.railwayignore` with `node_modules`, `.env`, and `logs` ignored.

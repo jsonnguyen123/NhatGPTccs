@@ -43,15 +43,15 @@ NhatGPT is a Chrome extension plus a Node.js backend for Christ Church School. I
 
 ## Repository layout
 
-- `/home/runner/work/NhatGPT/NhatGPT/extension` - Chrome extension source
-- `/home/runner/work/NhatGPT/NhatGPT/backend` - Express backend
-- `/home/runner/work/NhatGPT/NhatGPT/INSTALLATION.md` - local setup and Railway deployment guide
+- `./extension` - Chrome extension source
+- `./backend` - Express backend
+- `./INSTALLATION.md` - local setup and Railway deployment guide
 
 ## Quickstart
 
 ### Fastest way to run the current checked-in build
 
-1. Load `/home/runner/work/NhatGPT/NhatGPT/extension` as an unpacked extension in Chrome.
+1. Load `./extension` as an unpacked extension in Chrome.
 2. Open the extension and complete the Canvas sign-in flow from the welcome page, or add a Canvas API token in the options page.
 3. Optionally connect Blackbaud and Gmail from the options page.
 4. Open a Canvas page and use the popup, chatbot, or dashboard.
@@ -59,7 +59,7 @@ NhatGPT is a Chrome extension plus a Node.js backend for Christ Church School. I
 ### If you need to work on the backend
 
 1. Use Node 18.
-2. From `/home/runner/work/NhatGPT/NhatGPT/backend`, run `npm install`.
+2. From `./backend`, run `npm install`.
 3. Copy `.env.example` to `.env` and add the required values described in `INSTALLATION.md`.
 4. Start the server with `npm start`.
 
