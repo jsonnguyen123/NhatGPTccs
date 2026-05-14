@@ -1037,14 +1037,6 @@ class CanvasAIBackground {
                     ...options.headers,
                     'Authorization': `Bearer ${canvasToken}`
                 };
-            } else {
-                // Fallback for pre-auth requests (oauth/token, oauth/refresh)
-                const storage = await chrome.storage.local.get(['extensionApiSecret']);
-                const apiSecret = storage.extensionApiSecret || '';
-                options.headers = {
-                    ...options.headers,
-                    'x-extension-key': apiSecret
-                };
             }
         }
         return fetch(url, options);
